@@ -1,0 +1,27 @@
+{
+  "name": "sokosumi-cli",
+  "version": "0.1.0",
+  "description": "Sokosumi AI CLI",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "sokosumi": "bin/sokosumi.mjs"
+  },
+  "scripts": {
+    "prepare": "corepack enable",
+    "start": "node bin/sokosumi.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "yarn@1.22.22",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "@anthropic-ai/sdk": "0.60.0",
+    "ink": "^4.4.1",
+    "react": "^18.3.1"
+  }
+}
+
+
