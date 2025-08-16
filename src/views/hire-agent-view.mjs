@@ -63,8 +63,33 @@ export default function HireAgentView({agent, onBack}) {
   useInput((input, key) => {
     if (status !== 'ready') return;
     if (key.tab) {
-      // Toggle focus between first field and actions
-      setFocusedFieldId(prev => (prev ? null : (items[0]?.id || null)));
+      const ids = items.map(i => i.id).filter(Boolean);
+      if (ids.length === 0) return;
+      // Shift+Tab: go to previous field (or to actions if before first)
+      if (key.shift) {
+        if (!focusedFieldId) {
+          setFocusedFieldId(ids[ids.length - 1]);
+          return;
+        }
+        const idx = ids.indexOf(focusedFieldId);
+        if (idx <= 0) {
+          setFocusedFieldId(null); // move to actions
+        } else {
+          setFocusedFieldId(ids[idx - 1]);
+        }
+        return;
+      }
+      // Tab: go to next field (or to actions after the last field)
+      if (!focusedFieldId) {
+        setFocusedFieldId(ids[0]);
+        return;
+      }
+      const idx = ids.indexOf(focusedFieldId);
+      if (idx < 0 || idx === ids.length - 1) {
+        setFocusedFieldId(null); // move to actions
+      } else {
+        setFocusedFieldId(ids[idx + 1]);
+      }
     }
   });
 
