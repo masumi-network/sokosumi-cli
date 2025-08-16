@@ -136,7 +136,7 @@ export default function HireAgentView({agent, onBack}) {
         )
       ),
       React.createElement(Box, {marginTop: 1},
-        React.createElement(Text, null, 'Tip: Press Esc to return')
+        React.createElement(Text, null, 'Tip: Press Tab to move out of the input. Press Esc to return')
       )
     )
   );
