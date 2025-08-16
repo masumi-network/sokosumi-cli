@@ -38,8 +38,11 @@ yarn start
 ## Configuration
 - `.env` file in project root with:
 ```
+ANTHROPIC_API_KEY=your-key-here
 SOKOSUMI_API_KEY=your-key-here
+SOKOSUMI_API_URL=https://app.sokosumi.com
 ```
+- `.env.example` template file that you can use.
 
 ## Scripts
 - `yarn start` - run the CLI
