@@ -1,6 +1,12 @@
 # Sokosumi CLI
 
+
+
 Ink + React CLI styled like modern AI CLIs (Claude/Codex/Gemini). Animated intro logo, first-run API key setup, and a natural language prompt with a navigable menu.
+
+## Screenshot
+
+![Sokosumi CLI Screenshot](./screenshot.png)
 
 ## Requirements
 - Node.js >= 18
