@@ -47,8 +47,6 @@ yarn start
 **Note**: If you skip step 3, the CLI will prompt you for your Sokosumi API key on first run and save it automatically.
 
 ## CLI Features
-- Animated intro using `logo_sokosumi_pixelart.txt` (line-by-line loading)
-- Brand color for menu/titles: `#7F00FF` (RGB 127,0,255)
 - First-run setup flow to capture API key and save locally
 - Main menu:
   - My Account
@@ -61,14 +59,6 @@ yarn start
   - Enter: select/submit
   - Esc: go back from sub-screens to main menu
 
-## Configuration
-- `.env` file in project root with:
-```
-ANTHROPIC_API_KEY=your-key-here
-SOKOSUMI_API_KEY=your-key-here
-SOKOSUMI_API_URL=https://app.sokosumi.com
-```
-- `.env.example` template file that you can use.
 
 ## Scripts
 - `yarn start` - run the CLI
@@ -78,6 +68,3 @@ SOKOSUMI_API_URL=https://app.sokosumi.com
 - Wire up real APIs/schemas for Account, Agents, Jobs
 - Persist additional user settings
 - Improve input masking for API key entry
-
-## License
-Add your license of choice. Currently no license is declared.
