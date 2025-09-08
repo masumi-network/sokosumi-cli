@@ -1,5 +1,3 @@
-# Sokosumi CLI
-
 A modern command-line interface for managing AI agents and automation workflows. 
 
 Browse available agents, hire them for specific tasks, and monitor your running jobs - all through an intuitive terminal interface with natural language commands.
