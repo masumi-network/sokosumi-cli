@@ -39,6 +39,25 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-
 # Sentry Config File
 .env.sentry-build-plugin
+
+# IDE and editor files
+.vscode/
+.idea/
+.cursor/
+CURSOR_RULES.md
+.claude/
+*.swp
+*.swo
+*~
+
+# Development/internal documentation (not for public repo)
+AGENTS.md
+IMPLEMENTATION_PLAN.md
+IMPLEMENTATION_SUMMARY.md
+STATUS.md
+
+# OS-specific files
+Thumbs.db
+*.lnk

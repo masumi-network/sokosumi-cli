@@ -102,19 +102,37 @@ export default function HireAgentView({agent, onBack}) {
       status === 'loading' && React.createElement(Box, {marginTop: 1}, React.createElement(PixelLoader, {label: 'Loading form…'})),
       status === 'error' && React.createElement(Box, {marginTop: 1}, React.createElement(Text, {color: 'red'}, error || 'Error')),
       status === 'ready' && React.createElement(Box, {flexDirection: 'column', marginTop: 1},
-        ...items.map(field => (
-          React.createElement(Box, {key: field.id, flexDirection: 'column', marginBottom: 1},
+        ...items.map(field => {
+          // Support different field types
+          if (field.type === 'none') {
+            // No input needed - just show description
+            return React.createElement(Box, {key: field.id, flexDirection: 'column', marginBottom: 1},
+              React.createElement(Text, {bold: true}, field.name),
+              field.data?.description && React.createElement(Text, {dimColor: true}, field.data.description),
+              React.createElement(Text, {dimColor: true, italic: true}, '(no input required)')
+            );
+          }
+
+          if (field.type === 'string' || field.type === 'text') {
+            // Single-line or multi-line text input
+            return React.createElement(Box, {key: field.id, flexDirection: 'column', marginBottom: 1},
+              React.createElement(Text, {bold: true}, field.name),
+              field.data?.description && React.createElement(Text, {dimColor: true}, field.data.description),
+              React.createElement(TextInput, {
+                value: values[field.id] || '',
+                onChange: (val) => setValues(v => ({...v, [field.id]: val})),
+                placeholder: field.data?.placeholder || '',
+                focus: focusedFieldId === field.id
+              })
+            );
+          }
+
+          // Fallback for unknown types
+          return React.createElement(Box, {key: field.id, flexDirection: 'column', marginBottom: 1},
             React.createElement(Text, {bold: true}, field.name),
-            field.type === 'textarea'
-              ? React.createElement(TextInput, {
-                  value: values[field.id] || '',
-                  onChange: (val) => setValues(v => ({...v, [field.id]: val})),
-                  placeholder: field.data?.placeholder || '',
-                  focus: focusedFieldId === field.id
-                })
-              : React.createElement(Text, {dimColor: true}, 'Unsupported field type')
-          )
-        )),
+            React.createElement(Text, {dimColor: true}, `Unsupported field type: ${field.type}`)
+          );
+        }),
         React.createElement(Box, {flexDirection: 'column', marginTop: 1},
           React.createElement(Text, {bold: true}, 'Max accepted credits'),
           React.createElement(TextInput, {

@@ -14,6 +14,11 @@ import AgentsView from './views/agents-view.mjs';
 import AgentDetailsView from './views/agent-details-view.mjs';
 import HiredAgentsView from './views/hired-agents-view.mjs';
 import HireAgentView from './views/hire-agent-view.mjs';
+import CoworkersView from './views/coworkers-view.mjs';
+import CoworkerDetailsView from './views/coworker-details-view.mjs';
+import TasksView from './views/tasks-view.mjs';
+import CreateTaskView from './views/create-task-view.mjs';
+import DashboardView from './views/dashboard-view.mjs';
 
 const BRAND_HEX = '#7F00FF'; // RGB(127,0,255)
 
@@ -88,7 +93,7 @@ function SetupApiKey({onDone}) {
 
 function MainMenu() {
   const {exit} = useApp();
-  const [mode, setMode] = useState('menu'); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire'
+  const [mode, setMode] = useState('menu'); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire' | 'coworkers' | 'coworker' | 'tasks' | 'createTask' | 'dashboard'
   const [nl, setNl] = useState('');
   const [section, setSection] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
@@ -97,11 +102,15 @@ function MainMenu() {
   const [user, setUser] = useState(null);
   const [userError, setUserError] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [selectedCoworker, setSelectedCoworker] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const items = useMemo(() => ([
+    {label: '📊 Dashboard (Live Tasks)', value: 'dashboard'},
     {label: 'My Account', value: 'account'},
     {label: 'Agents Gallery', value: 'agents'},
-    {label: 'Hired Agents', value: 'jobs'},
+    {label: 'Coworkers (Multi-Agent)', value: 'coworkers'},
+    {label: 'My Jobs', value: 'jobs'},
     {label: 'Setup Api Key', value: 'setup'},
     {label: 'Quit', value: 'quit'}
   ]), []);
@@ -115,8 +124,10 @@ function MainMenu() {
     setRouteInfo(null);
     setAsked('');
     setSection(item.value);
+    if (item.value === 'dashboard') return setMode('dashboard');
     if (item.value === 'account') return setMode('account');
     if (item.value === 'agents') return setMode('agents');
+    if (item.value === 'coworkers') return setMode('coworkers');
     if (item.value === 'setup') return setMode('setup');
     if (item.value === 'jobs') return setMode('jobs');
     setMode('placeholder');
@@ -132,7 +143,15 @@ function MainMenu() {
         setMode('agents');
         return;
       }
-      if (mode === 'jobs') {
+      if (mode === 'coworker') {
+        setMode('coworkers');
+        return;
+      }
+      if (mode === 'createTask') {
+        setMode('coworkers');
+        return;
+      }
+      if (mode === 'jobs' || mode === 'tasks') {
         setMode('menu');
         return;
       }
@@ -381,9 +400,64 @@ function MainMenu() {
     });
   }
 
+  if (mode === 'coworkers') {
+    return React.createElement(CoworkersView, {
+      onBack: () => setMode('menu'),
+      onSelectCoworker: (coworker) => {
+        setSelectedCoworker(coworker);
+        setMode('coworker');
+      },
+      onCreateTask: (coworker) => {
+        setSelectedCoworker(coworker);
+        setMode('createTask');
+      }
+    });
+  }
+
+  if (mode === 'coworker') {
+    return React.createElement(CoworkerDetailsView, {
+      coworker: selectedCoworker,
+      onBack: () => setMode('coworkers')
+    });
+  }
+
+  if (mode === 'dashboard') {
+    return React.createElement(DashboardView, {
+      onBack: () => setMode('menu'),
+      onSelectTask: (task) => {
+        setSelectedTask(task);
+        // For now, go back to menu - will add task details view
+        setMode('menu');
+      }
+    });
+  }
+
+  if (mode === 'createTask') {
+    return React.createElement(CreateTaskView, {
+      coworker: selectedCoworker,
+      onBack: () => setMode('coworkers'),
+      onTaskCreated: (task) => {
+        setSelectedTask(task);
+        setMode('dashboard');
+      }
+    });
+  }
+
+  if (mode === 'tasks') {
+    return React.createElement(TasksView, {
+      onBack: () => setMode('menu'),
+      onSelectTask: (task) => {
+        setSelectedTask(task);
+        // TODO: Add task details view - will implement next
+        setMode('menu');
+      }
+    });
+  }
+
   return React.createElement(
     Box,
     {flexDirection: 'column'},
+    React.createElement(ClearScreen),
     React.createElement(Box, {flexDirection: 'column', paddingX: 1, paddingY: 1, borderStyle: 'round', borderColor: BRAND_HEX},
       renderAsciiTitle('SOKOSUMI CLI'),
       React.createElement(Box, {marginTop: 1, flexDirection: 'column'},

@@ -3,7 +3,7 @@ import {ApiResponse} from '../models/api-response.mjs';
 import {Agent} from '../models/agent.mjs';
 import {AgentJob} from '../models/agent-job.mjs';
 
-const AGENTS_PATH = '/api/v1/agents';
+const AGENTS_PATH = '/v1/agents';
 
 export async function fetchAgents({signal} = {}) {
   const json = await httpGet(AGENTS_PATH, {signal});

@@ -1,38 +1,20 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Box, Text, useInput} from 'ink';
+import {Box, Text} from 'ink';
 import ScreenContainer from '../components/screen-container.mjs';
 import SelectInput from '../components/select-input.mjs';
 import PixelLoader from '../components/pixel-loader.mjs';
-import {fetchAgents, fetchAgentJobs} from '../api/index.mjs';
+import {fetchJobs, fetchJobFiles, fetchJobLinks} from '../api/index.mjs';
 
 const BRAND_HEX = '#7F00FF';
-
-function AgentRow({agent, jobCount}) {
-  const tags = (agent.tags || []).map(t => t?.name).filter(Boolean);
-  const credits = agent?.price?.credits;
-  return React.createElement(
-    Box,
-    {flexDirection: 'row', justifyContent: 'space-between', width: '100%'},
-    React.createElement(Box, {flexDirection: 'column', flexGrow: 1, flexShrink: 1},
-      React.createElement(Text, {bold: true, wrap: 'truncate'}, agent.name || ''),
-      agent.description && React.createElement(Text, {dimColor: true, wrap: 'truncate'}, agent.description),
-      tags.length > 0 && React.createElement(Text, {dimColor: true, wrap: 'truncate'}, `Tags: ${tags.join(', ')}`),
-      Number.isFinite(jobCount) && React.createElement(Text, {dimColor: true}, `Jobs with results: ${jobCount}`)
-    ),
-    React.createElement(Box, {marginLeft: 2, flexGrow: 0, flexShrink: 0},
-      React.createElement(Text, {color: BRAND_HEX, bold: true}, credits != null ? `${credits}\u00A0cr` : '')
-    )
-  );
-}
 
 export default function HiredAgentsView({onBack}) {
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [error, setError] = useState(null);
-  const [agentsData, setAgentsData] = useState([]); // [{agent, jobs: []}]
-  const [selectedAgentId, setSelectedAgentId] = useState(null);
+  const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [lastJobIndex, setLastJobIndex] = useState(0);
-  // Follow AgentDetailsView behavior: don't overmanage focus; rely on listen flags
+  const [jobFiles, setJobFiles] = useState([]);
+  const [jobLinks, setJobLinks] = useState([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
     let aborted = false;
@@ -40,36 +22,19 @@ export default function HiredAgentsView({onBack}) {
       setStatus('loading');
       setError(null);
       try {
-        const {agents} = await fetchAgents();
+        const {jobs: fetchedJobs} = await fetchJobs();
         if (aborted) return;
-        const jobPromises = agents.map(async (a) => {
-          try {
-            const {jobs} = await fetchAgentJobs(a.id);
-            const withResults = (jobs || []).filter(j => {
-              const out = j?.output;
-              return out != null && String(out).trim().length > 0;
-            });
-            return {agent: a, jobs: withResults};
-          } catch {
-            return {agent: a, jobs: []};
-          }
-        });
-        const results = await Promise.all(jobPromises);
-        if (aborted) return;
-        const filtered = results.filter(r => r.jobs.length > 0);
-        setAgentsData(filtered);
+        setJobs(fetchedJobs || []);
         setStatus('ready');
       } catch (e) {
         if (aborted) return;
-        setError(e?.message || 'Failed to load hired agents');
+        setError(e?.message || 'Failed to load jobs');
         setStatus('error');
       }
     }
     load();
     return () => { aborted = true; };
   }, []);
-
-  const selectedAgentData = useMemo(() => agentsData.find(d => d.agent?.id === selectedAgentId) || null, [agentsData, selectedAgentId]);
 
   const renderDate = (value) => {
     if (!value) return '-';
@@ -78,67 +43,61 @@ export default function HiredAgentsView({onBack}) {
     return d.toLocaleString();
   };
 
-  const JobRow = ({job, agentName}) => {
+  const JobRow = ({job}) => {
+    const statusColor = job.status === 'completed' ? 'green' :
+                       job.status === 'failed' ? 'red' :
+                       job.status === 'running' ? 'yellow' : 'white';
+
     return React.createElement(
       Box,
-      {flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 1},
+      {flexDirection: 'row', justifyContent: 'space-between', width: '100%'},
       React.createElement(Box, {flexDirection: 'column', flexGrow: 1, flexShrink: 1},
         React.createElement(Text, {bold: true, wrap: 'truncate'}, job.name || job.id || 'Job'),
-        React.createElement(Text, {dimColor: true, wrap: 'truncate'}, `Agent: ${agentName || '-'}`)
+        React.createElement(Text, {dimColor: true, wrap: 'truncate'}, `Created: ${renderDate(job.createdAt)}`)
       ),
-      React.createElement(Box, {marginLeft: 2, flexDirection: 'row', flexGrow: 0, flexShrink: 0},
-        React.createElement(Text, {dimColor: true}, 'Status: '),
-        React.createElement(Text, null, job.status || '-'),
-        React.createElement(Text, {dimColor: true}, '   Started: '),
-        React.createElement(Text, null, renderDate(job.startedAt))
+      React.createElement(Box, {marginLeft: 2, flexDirection: 'column', flexGrow: 0, flexShrink: 0, alignItems: 'flex-end'},
+        React.createElement(Text, {color: statusColor}, job.status || '-'),
+        job.credits != null && React.createElement(Text, {dimColor: true}, `${job.credits} cr`)
       )
     );
   };
 
-  const agentItems = useMemo(() => agentsData.map(({agent, jobs}) => ({
-    label: agent.name || agent.id,
-    value: agent.id,
-    agent,
-    jobs,
-    render: () => React.createElement(AgentRow, {agent, jobCount: jobs.length})
-  })), [agentsData]);
+  const jobItems = useMemo(() => jobs.map(j => ({
+    label: j.name || j.id || 'Job',
+    value: j.id,
+    job: j,
+    render: () => React.createElement(JobRow, {job: j})
+  })), [jobs]);
 
-  const jobItems = useMemo(() => {
-    if (!selectedAgentData) return [];
-    const agentName = selectedAgentData.agent?.name || selectedAgentData.agent?.id;
-    return selectedAgentData.jobs.map(j => ({
-      label: `${agentName} — ${j.name || j.id || 'Job'}`,
-      value: j.id || j.agentJobId,
-      job: j,
-      render: () => React.createElement(JobRow, {job: j, agentName})
-    }));
-  }, [selectedAgentData]);
-
-  const handleAgentSelect = (item) => {
+  const handleJobSelect = async (item) => {
     if (item.value === '__back') return onBack && onBack();
-    setSelectedJob(null);
-    setSelectedAgentId(item.value);
-  };
-
-  const handleJobSelect = (item) => {
-    const list = selectedAgentData?.jobs || [];
-    const job = item?.job || list.find(j => (j.id || j.agentJobId) === item?.value);
-    if (job) {
-      const idx = list.findIndex(j => (j.id || j.agentJobId) === (job.id || job.agentJobId));
-      setLastJobIndex(idx >= 0 ? idx : 0);
-    }
+    const job = item?.job || jobs.find(j => j.id === item?.value);
     setSelectedJob(job || null);
+
+    // Fetch files and links for this job
+    if (job?.id) {
+      setLoadingDetails(true);
+      try {
+        const [{files}, {links}] = await Promise.all([
+          fetchJobFiles(job.id),
+          fetchJobLinks(job.id)
+        ]);
+        setJobFiles(files || []);
+        setJobLinks(links || []);
+      } catch (e) {
+        // Silently fail - some jobs may not have files/links
+        setJobFiles([]);
+        setJobLinks([]);
+      } finally {
+        setLoadingDetails(false);
+      }
+    }
   };
 
-  const returnToJobsList = () => setSelectedJob(null);
-
-  const parseJsonString = (maybeJsonString) => {
-    if (!maybeJsonString || typeof maybeJsonString !== 'string') return null;
-    try {
-      return JSON.parse(maybeJsonString);
-    } catch {
-      return null;
-    }
+  const returnToJobsList = () => {
+    setSelectedJob(null);
+    setJobFiles([]);
+    setJobLinks([]);
   };
 
   const renderInlineStrong = (line) => {
@@ -172,120 +131,88 @@ export default function HiredAgentsView({onBack}) {
     );
   };
 
-  // Keyboard: when viewing a job's details, allow quick back to job list (same as AgentDetailsView)
-  useInput((input, key) => {
-    if (key.return || key.enter || key.backspace || key.leftArrow || input?.toLowerCase() === 'b' || input === '\\r' || input === '\\n') {
-      returnToJobsList();
-    }
-  }, {isActive: Boolean(selectedJob)});
-
   return React.createElement(
     ScreenContainer,
     null,
     React.createElement(Box, {flexDirection: 'column', width: '100%'},
-    React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Hired Agents'),
+      React.createElement(Text, {color: BRAND_HEX, bold: true}, 'My Jobs'),
+      React.createElement(Text, null, 'View all your hired agent jobs and their results'),
 
-    // Agents list (only those with results)
-    !selectedAgentId && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
-      status === 'loading' && React.createElement(PixelLoader),
-      status === 'error' && React.createElement(Text, {color: 'red'}, error || 'Error'),
-      status === 'ready' && agentItems.length === 0 && React.createElement(Text, null, 'No hired agents with results yet'),
-      status === 'ready' && agentItems.length > 0 && React.createElement(SelectInput, {items: [...agentItems, {label: 'Back', value: '__back'}], onSelect: handleAgentSelect})
-    ),
+      // Jobs list
+      !selectedJob && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
+        status === 'loading' && React.createElement(PixelLoader, {label: 'Loading jobs…'}),
+        status === 'error' && React.createElement(Text, {color: 'red'}, error || 'Error'),
+        status === 'ready' && jobItems.length === 0 && React.createElement(Text, null, 'No jobs yet. Hire an agent from the Agents Gallery to get started!'),
+        status === 'ready' && jobItems.length > 0 && React.createElement(SelectInput, {
+          items: [...jobItems, {label: 'Back to Main Menu', value: '__back'}],
+          onSelect: handleJobSelect
+        })
+      ),
 
-    // Selected agent view
-    selectedAgentId && (() => {
-      const agent = selectedAgentData?.agent;
-      const jobs = selectedAgentData?.jobs || [];
-      const agentName = agent?.name || 'Agent';
-      return React.createElement(
-        Box,
-        {flexDirection: 'column', width: '100%'},
-        React.createElement(Text, {color: BRAND_HEX, bold: true}, agentName),
-        agent?.description && React.createElement(Text, null, agent.description),
-        (agent?.tags || []).length > 0 && React.createElement(Text, {dimColor: true}, `Tags: ${(agent.tags || []).map(t => t?.name).filter(Boolean).join(', ')}`),
-        agent?.price?.credits != null && React.createElement(Text, {color: BRAND_HEX}, `Credits: ${agent.price.credits}`),
+      // Selected job details
+      selectedJob && React.createElement(Box, {marginTop: 1, flexDirection: 'column', width: '100%'},
+        React.createElement(Text, {color: BRAND_HEX, bold: true}, selectedJob.name || selectedJob.id || 'Job Details'),
+        React.createElement(Text, {dimColor: true}, `Status: ${selectedJob.status || '-'}`),
+        React.createElement(Text, {dimColor: true}, `Created: ${renderDate(selectedJob.createdAt)}`),
+        selectedJob.completedAt && React.createElement(Text, {dimColor: true}, `Completed: ${renderDate(selectedJob.completedAt)}`),
+        selectedJob.credits != null && React.createElement(Text, {dimColor: true}, `Credits: ${selectedJob.credits}`),
 
-        React.createElement(Box, {marginTop: 1},
-          React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Jobs with results')
-        ),
-        jobs.length === 0 && React.createElement(Text, null, 'No completed jobs for this agent'),
-        jobs.length > 0 && React.createElement(Box, {flexDirection: 'column', width: '100%'},
-          React.createElement(SelectInput, {items: jobItems, onSelect: handleJobSelect, listen: !selectedJob, initialIndex: lastJobIndex, key: `jobs-${lastJobIndex}-${jobs.length}`})
+        // Result
+        selectedJob.result && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
+          React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Result'),
+          renderMarkdown(selectedJob.result)
         ),
 
-        // Selected job details
-        selectedJob && React.createElement(Box, {marginTop: 1, flexDirection: 'column', width: '100%'},
-          React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Job Details'),
-          React.createElement(Text, {bold: true}, selectedJob.name || selectedJob.id || 'Job'),
-          React.createElement(Text, {dimColor: true}, `Status: ${selectedJob.status || '-'}`),
-          React.createElement(Text, {dimColor: true}, `Started: ${renderDate(selectedJob.startedAt)}`),
+        // Files (images, PDFs, etc.)
+        loadingDetails && React.createElement(Box, {marginTop: 1},
+          React.createElement(PixelLoader, {label: 'Loading files and links…'})
+        ),
+        !loadingDetails && jobFiles.length > 0 && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
+          React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Files'),
+          ...jobFiles.map((file, idx) => {
+            const sizeKB = file.size ? Math.round(file.size / 1024) : null;
+            const sizeDisplay = sizeKB ? `${sizeKB} KB` : '';
+            return React.createElement(Box, {key: file.id || idx, flexDirection: 'column', marginTop: 1, borderStyle: 'single', borderColor: 'gray', paddingX: 1},
+              React.createElement(Text, {bold: true}, file.name || 'Untitled'),
+              file.mimeType && React.createElement(Text, {dimColor: true}, `Type: ${file.mimeType}${sizeDisplay ? ` • Size: ${sizeDisplay}` : ''}`),
+              file.url && React.createElement(Text, {color: 'cyan', wrap: 'truncate'}, `URL: ${file.url}`),
+              !file.url && React.createElement(Text, {dimColor: true}, 'No download URL available'),
+              React.createElement(Text, {dimColor: true, italic: true}, 'Tip: Copy URL to view/download file')
+            );
+          })
+        ),
 
-          // Input
-          React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
-            React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Input'),
-            (() => {
-              const parsed = parseJsonString(selectedJob.input);
-              if (parsed && typeof parsed === 'object') {
-                const mdParts = [];
-                if (typeof parsed.question === 'string' && parsed.question.trim()) {
-                  mdParts.push('## Question');
-                  mdParts.push('');
-                  mdParts.push(parsed.question.trim());
-                }
-                const otherKeys = Object.keys(parsed).filter(k => k !== 'question');
-                if (otherKeys.length > 0) {
-                  mdParts.push('');
-                  mdParts.push('## Inputs');
-                  for (const key of otherKeys) {
-                    const value = parsed[key];
-                    if (Array.isArray(value)) {
-                      for (const item of value) mdParts.push(`- ${key}: ${String(item)}`);
-                    } else if (value && typeof value === 'object') {
-                      mdParts.push(`- ${key}: ${JSON.stringify(value)}`);
-                    } else {
-                      mdParts.push(`- ${key}: ${String(value)}`);
-                    }
-                  }
-                }
-                const md = mdParts.join('\n');
-                return renderMarkdown(md);
-              }
-              return renderMarkdown(selectedJob.input || '—');
-            })()
-          ),
-
-          // Output
-          React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
-            React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Output'),
-            (() => {
-              const parsed = parseJsonString(selectedJob.output);
-              const resultMd = parsed && typeof parsed.result === 'string' ? parsed.result : (selectedJob.output || '—');
-              return renderMarkdown(resultMd);
-            })()
-          ),
-
-          // Back action when in details
-          React.createElement(Box, {marginTop: 1, flexDirection: 'column', width: '100%'},
-            React.createElement(SelectInput, {
-              items: [{label: 'Back to jobs', value: '__backJobs'}],
-              onSelect: returnToJobsList,
-              listen: true,
-              initialIndex: 0,
-              key: `back-${selectedJob?.id || selectedJob?.agentJobId || 'job'}`
-            })
+        // Links
+        !loadingDetails && jobLinks.length > 0 && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
+          React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Links'),
+          ...jobLinks.map((link, idx) =>
+            React.createElement(Box, {key: link.id || idx, flexDirection: 'column', marginTop: 1, borderStyle: 'single', borderColor: 'gray', paddingX: 1},
+              React.createElement(Text, {bold: true}, link.title || 'Link'),
+              link.description && React.createElement(Text, {dimColor: true}, link.description),
+              link.url && React.createElement(Text, {color: 'cyan', wrap: 'truncate'}, link.url),
+              React.createElement(Text, {dimColor: true, italic: true}, 'Tip: Copy URL to open in browser')
+            )
           )
         ),
 
+        // No result message
+        !selectedJob.result && !loadingDetails && jobFiles.length === 0 && jobLinks.length === 0 && React.createElement(Box, {marginTop: 1},
+          React.createElement(Text, {dimColor: true}, selectedJob.status === 'running' ? 'Job is still running...' : 'No result yet')
+        ),
+
+        // Back button
         React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
-          selectedJob
-            ? React.createElement(Text, null, 'Tip: Press Enter/Backspace/Left/B or select "Back to jobs" to return to the jobs list')
-            : React.createElement(Text, null, 'Tip: Press Esc to return to the main menu')
+          React.createElement(SelectInput, {
+            items: [{label: 'Back to Jobs List', value: '__backJobs'}],
+            onSelect: returnToJobsList,
+            listen: true
+          })
+        ),
+
+        React.createElement(Box, {marginTop: 1},
+          React.createElement(Text, {dimColor: true}, 'Tip: Press Esc to return to jobs list')
         )
-      );
-    })()
+      )
     )
   );
 }
-
-
