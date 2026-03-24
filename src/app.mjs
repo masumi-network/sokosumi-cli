@@ -2,11 +2,10 @@ import React, {useEffect, useState, useMemo} from 'react';
 import {Box, Text, useApp, useInput} from 'ink';
 import SelectInput from './components/select-input.mjs';
 import TextInput from './components/text-input.mjs';
-import {loadEnvFromLocalFile, getApiKeyFromEnv, writeApiKeyToEnv} from './utils/env.mjs';
+import {loadEnvFromLocalFile, getApiKeyFromEnv} from './utils/env.mjs';
 import {interpretUserRequest} from './utils/nl.mjs';
 import AnimatedLogo from './components/animated-logo.mjs';
 import PixelLoader from './components/pixel-loader.mjs';
-import ScreenContainer from './components/screen-container.mjs';
 import ClearScreen from './components/clear-screen.mjs';
 import AccountView from './views/account-view.mjs';
 import {fetchCurrentUser} from './api/index.mjs';
@@ -20,81 +19,14 @@ import TasksView from './views/tasks-view.mjs';
 import CreateTaskView from './views/create-task-view.mjs';
 import DashboardView from './views/dashboard-view.mjs';
 import TaskDetailsView from './views/task-details-view.mjs';
+import AuthSetupView from './views/auth-setup-view.mjs';
+import {getAuthManager} from './auth/auth-manager.mjs';
 
 const BRAND_HEX = '#7F00FF'; // RGB(127,0,255)
 
-function SetupApiKey({onDone}) {
-  const [value, setValue] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [showPopup, setShowPopup] = useState(false);
-
-  const handleSubmit = async () => {
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await writeApiKeyToEnv(trimmed);
-      onDone(trimmed);
-    } catch (e) {
-      setError(e?.message || 'Failed to save API key');
-      setSaving(false);
-    }
-  };
-
-  useInput((input, key) => {
-    if (showPopup && key.escape && !saving) {
-      setShowPopup(false);
-    }
-  });
-
-  const items = useMemo(() => ([
-    {label: 'Enter Sokosumi API Key', value: 'enter'}
-  ]), []);
-
-  const handleSelect = item => {
-    if (item.value === 'enter') setShowPopup(true);
-  };
-
-  return React.createElement(
-    ScreenContainer,
-    null,
-    React.createElement(Box, {flexDirection: 'column'},
-      React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Welcome to Sokosumi CLI'),
-      React.createElement(Text, null, 'Let\'s set up your API key to get started.'),
-      React.createElement(Box, {marginTop: 1},
-        React.createElement(SelectInput, {items, onSelect: handleSelect})
-      ),
-      React.createElement(Box, {marginTop: 1},
-        React.createElement(Text, null, 'We\'ll save it locally to .env as SOKOSUMI_API_KEY=...')
-      ),
-      showPopup && React.createElement(Box, {flexDirection: 'column', marginTop: 1},
-        React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Enter Sokosumi API Key'),
-        React.createElement(Box, {marginTop: 1},
-          React.createElement(Text, {color: BRAND_HEX}, '› '),
-          saving
-            ? React.createElement(Text, null, 'saving...')
-            : React.createElement(TextInput, {
-                value,
-                onChange: setValue,
-                placeholder: 'Abc... (input hidden not implemented, paste safely)',
-                onSubmit: handleSubmit,
-                focus: true
-              })
-        ),
-        error && React.createElement(Text, {color: 'red'}, error),
-        React.createElement(Box, {marginTop: 1},
-          React.createElement(Text, null, 'Press Esc to cancel')
-        )
-      )
-    )
-  );
-}
-
 function MainMenu() {
   const {exit} = useApp();
-  const [mode, setMode] = useState('menu'); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire' | 'coworkers' | 'coworker' | 'tasks' | 'task' | 'taskAgents' | 'taskHire' | 'createTask' | 'dashboard'
+  const [mode, setMode] = useState('menu'); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire' | 'coworkers' | 'coworker' | 'tasks' | 'task' | 'taskAgents' | 'taskHire' | 'createTask' | 'dashboard' | 'auth'
   const [nl, setNl] = useState('');
   const [section, setSection] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
@@ -102,6 +34,7 @@ function MainMenu() {
   const [userStatus, setUserStatus] = useState('loading'); // loading | ready | error
   const [user, setUser] = useState(null);
   const [userError, setUserError] = useState(null);
+  const [userLoadNonce, setUserLoadNonce] = useState(0);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [selectedCoworker, setSelectedCoworker] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -114,7 +47,7 @@ function MainMenu() {
     {label: 'Agents Gallery', value: 'agents'},
     {label: 'Coworkers (Multi-Agent)', value: 'coworkers'},
     {label: 'My Jobs', value: 'jobs'},
-    {label: 'Setup Api Key', value: 'setup'},
+    {label: 'Authentication', value: 'auth'},
     {label: 'Quit', value: 'quit'}
   ]), []);
 
@@ -132,13 +65,16 @@ function MainMenu() {
     if (item.value === 'account') return setMode('account');
     if (item.value === 'agents') return setMode('agents');
     if (item.value === 'coworkers') return setMode('coworkers');
-    if (item.value === 'setup') return setMode('setup');
+    if (item.value === 'auth') return setMode('auth');
     if (item.value === 'jobs') return setMode('jobs');
     setMode('placeholder');
   };
 
   useInput((input, key) => {
     if (key.escape) {
+      if (mode === 'auth') {
+        return;
+      }
       if (mode === 'agent') {
         setMode('agents');
         return;
@@ -206,7 +142,7 @@ function MainMenu() {
     return () => {
       aborted = true;
     };
-  }, []);
+  }, [userLoadNonce]);
 
   const renderAsciiTitle = (text) => {
     const glyphs = {
@@ -397,9 +333,13 @@ function MainMenu() {
     });
   }
 
-  if (mode === 'setup') {
-    return React.createElement(SetupApiKey, {
-      onDone: () => setMode('menu')
+  if (mode === 'auth') {
+    return React.createElement(AuthSetupView, {
+      onDone: () => {
+        setUserLoadNonce((value) => value + 1);
+        setMode('menu');
+      },
+      onBack: () => setMode('menu')
     });
   }
 
@@ -567,21 +507,23 @@ function MainMenu() {
 }
 
 export default function App() {
-  const [stage, setStage] = useState('boot'); // boot -> setup|menu
+  const [stage, setStage] = useState('boot'); // boot -> auth|menu
   const [showLogo, setShowLogo] = useState(true);
-  const [apiKey, setApiKey] = useState(null);
+  const [hasAuth, setHasAuth] = useState(false);
 
   useEffect(() => {
     loadEnvFromLocalFile();
     const key = getApiKeyFromEnv();
-    setApiKey(key || null);
+    const authManager = getAuthManager();
+    authManager.loadCredentials();
+    setHasAuth(Boolean(key) || authManager.isAuthenticated());
   }, []);
 
   useEffect(() => {
     if (!showLogo) {
-      setStage(apiKey ? 'menu' : 'setup');
+      setStage(hasAuth ? 'menu' : 'auth');
     }
-  }, [showLogo, apiKey]);
+  }, [showLogo, hasAuth]);
 
   if (showLogo) {
     return React.createElement(
@@ -592,15 +534,13 @@ export default function App() {
     );
   }
 
-  if (stage === 'setup') {
-    return React.createElement(ScreenContainer, null,
-      React.createElement(SetupApiKey, {
-        onDone: (key) => {
-          setApiKey(key);
-          setStage('menu');
-        }
-      })
-    );
+  if (stage === 'auth') {
+    return React.createElement(AuthSetupView, {
+      onDone: () => {
+        setHasAuth(true);
+        setStage('menu');
+      }
+    });
   }
 
   return React.createElement(MainMenu);

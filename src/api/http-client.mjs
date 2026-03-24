@@ -45,7 +45,7 @@ function getAuthHeaders() {
 
   // No authentication available
   throw new Error(
-    'No authentication found. Please set SOKOSUMI_API_KEY in .env or login with: sokosumi auth login'
+    'No authentication found. Start the CLI and choose Authentication, or set SOKOSUMI_API_KEY in your environment.'
   );
 }
 
@@ -182,5 +182,4 @@ export async function httpDelete(pathname, {signal} = {}) {
 
   return json;
 }
-
 

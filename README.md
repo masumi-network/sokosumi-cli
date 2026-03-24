@@ -34,47 +34,59 @@ The project declares `packageManager: yarn@1.22.22` and a `prepare` script to en
 
 ## 🚀 Installation
 
-### 1. Install Dependencies
+### Local Development
 ```bash
 # From project root
 corepack enable  # optional; Yarn will be available via Corepack
 yarn install
+yarn start
 ```
 
-### 2. Setup Environment
+### npm Distribution
+```bash
+npm install -g sokosumi-cli
+# or
+npx sokosumi-cli
+```
+
+The package already exposes the `sokosumi` binary. Once published to npm, other users and agent runtimes can install it globally or run it on demand with `npx`.
+
+### Optional Environment Setup
 ```bash
 cp .env.example .env
 ```
 
-### 3. Configure Authentication
+If you skip `.env`, the CLI will still work. It defaults to the production API and stores interactive auth locally under `~/.sokosumi/`.
 
-Edit the `.env` file and add your Sokosumi API key:
+### Authentication Options
+
+You can authenticate in either of these ways:
 
 ```bash
 # API Configuration
-SOKOSUMI_API_URL=https://app.sokosumi.com
+SOKOSUMI_API_URL=https://api.sokosumi.com
 
-# Option 1: API Key (backward compatible)
-SOKOSUMI_API_KEY=<your-sokosumi-api-key>
+# Optional browser auth overrides
+# SOKOSUMI_WEB_URL=https://sokosumi.com
+# SOKOSUMI_AUTH_URL=https://sokosumi.com/api/auth
 
-# Option 2: Auth Token (managed automatically after login)
+# Option 1: API key (optional if you use interactive setup)
+# SOKOSUMI_API_KEY=<your-sokosumi-api-key>
+
+# Option 2: Auth token (managed automatically after login)
 # SOKOSUMI_AUTH_TOKEN=your-auth-token-here
 
 # Optional: Anthropic API Key for AI features
 ANTHROPIC_API_KEY=<your-anthropic-api-key>
 ```
 
-**Getting your Sokosumi API Key:**
-1. Go to [https://app.sokosumi.com/account](https://app.sokosumi.com/account)
-2. Scroll down to the **API Keys** section
-3. Create a new API key and copy it to your `.env` file
+On first run, the CLI now offers:
+- `Email me a sign-in link`: sends a browser sign-in email and lands you on Sokosumi Connections so you can create an API key.
+- `Paste an API key`: verifies the key immediately before saving it.
 
-### 4. Run the CLI
-```bash
-yarn start
-```
-
-**Note**: If you skip step 3, the CLI will prompt you for your Sokosumi API key on first run and save it automatically.
+Saved interactive configuration lives in:
+- `~/.sokosumi/config.json` for API key and CLI config
+- `~/.sokosumi/credentials.json` for auth tokens
 
 ## 🎮 Usage
 
@@ -93,8 +105,8 @@ When you start the CLI, you'll see the main menu with the following options:
 │    Agents Gallery                   │
 │    Coworkers (Multi-Agent)          │
 │    My Tasks                         │
-│    Hired Agents                     │
-│    Setup Api Key                    │
+│    My Jobs                          │
+│    Authentication                   │
 │    Quit                             │
 └─────────────────────────────────────┘
 ```
@@ -136,7 +148,7 @@ Manage your automation tasks:
 - Track job count per task
 - Refresh task list
 
-#### 5. Hired Agents
+#### 5. My Jobs
 View and manage your active agent jobs:
 - List all hired agents
 - Check job status
@@ -172,6 +184,10 @@ The CLI supports secure token authentication stored in `~/.sokosumi/credentials.
 ```
 
 Tokens are stored with `0o700` permissions for security and include automatic expiry checking with a 5-minute buffer.
+
+### API Key Storage
+
+Interactive API key setup stores the key in `~/.sokosumi/config.json` so the CLI works cleanly when installed via npm and run from any directory.
 
 ### API Integration
 
@@ -280,12 +296,12 @@ node --version  # Should be >= 18
 ### Authentication errors
 
 ```bash
-# Check your API key in .env
-cat .env
-
-# Or set up API key interactively
+# Start the interactive auth flow
 yarn start
-# Select "Setup Api Key" from menu
+# Select "Authentication" from the menu
+
+# Inspect local CLI config
+cat ~/.sokosumi/config.json
 ```
 
 ### Token issues
@@ -319,7 +335,7 @@ yarn start
 - [ ] Performance optimization
 - [ ] Cross-platform testing
 - [ ] Migration guide
-- [ ] npm publishing
+- [ ] npm publish
 
 ## 📖 Documentation
 
