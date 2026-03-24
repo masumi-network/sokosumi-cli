@@ -33,7 +33,12 @@ export async function fetchAgentInputSchema(agentId, {signal} = {}) {
 
 export async function createAgentJob(agentId, {inputData, maxAcceptedCredits}, {signal} = {}) {
   if (!agentId) throw new Error('agentId is required');
-  const payload = {inputData: inputData || {}, maxAcceptedCredits};
+  const payload = {
+    input_data: inputData || {},
+    max_accepted_credits: maxAcceptedCredits
+  };
+  // Debug: log the payload being sent
+  console.error('[DEBUG] Sending payload:', JSON.stringify(payload, null, 2));
   const json = await httpPost(`${AGENTS_PATH}/${agentId}/jobs`, payload, {signal});
   const resp = ApiResponse.from(json);
   const job = AgentJob.from(resp.data);

@@ -33,10 +33,16 @@ export default function HireAgentView({agent, onBack}) {
       try {
         const {fields: schemaFields} = await fetchAgentInputSchema(agent.id);
         if (aborted) return;
+        console.error('[DEBUG] Received schema fields:', JSON.stringify(schemaFields, null, 2));
         setFields(schemaFields);
-        // initialize values
+        // initialize values - only for fields that need input
         const initial = {};
-        for (const f of schemaFields) initial[f.id] = '';
+        for (const f of schemaFields) {
+          // Don't initialize values for fields that don't need input
+          if (f.type !== 'none') {
+            initial[f.id] = '';
+          }
+        }
         setValues(initial);
         setStatus('ready');
         setFocusedFieldId(schemaFields[0]?.id || null);
@@ -113,8 +119,10 @@ export default function HireAgentView({agent, onBack}) {
             );
           }
 
-          if (field.type === 'string' || field.type === 'text') {
-            // Single-line or multi-line text input
+          if (field.type === 'string' || field.type === 'text' || field.type === 'textarea' ||
+              field.type === 'date' || field.type === 'email' || field.type === 'url' ||
+              field.type === 'number') {
+            // Text-based input types (including date, email, url, number as text for simplicity)
             return React.createElement(Box, {key: field.id, flexDirection: 'column', marginBottom: 1},
               React.createElement(Text, {bold: true}, field.name),
               field.data?.description && React.createElement(Text, {dimColor: true}, field.data.description),
@@ -127,10 +135,18 @@ export default function HireAgentView({agent, onBack}) {
             );
           }
 
-          // Fallback for unknown types
+          // Fallback for unknown types - still show them with a text input
+          console.warn(`[WARN] Unknown field type "${field.type}" for field "${field.id}"`);
           return React.createElement(Box, {key: field.id, flexDirection: 'column', marginBottom: 1},
             React.createElement(Text, {bold: true}, field.name),
-            React.createElement(Text, {dimColor: true}, `Unsupported field type: ${field.type}`)
+            React.createElement(Text, {dimColor: true}, `Type: ${field.type} (experimental support)`),
+            field.data?.description && React.createElement(Text, {dimColor: true}, field.data.description),
+            React.createElement(TextInput, {
+              value: values[field.id] || '',
+              onChange: (val) => setValues(v => ({...v, [field.id]: val})),
+              placeholder: field.data?.placeholder || '',
+              focus: focusedFieldId === field.id
+            })
           );
         }),
         React.createElement(Box, {flexDirection: 'column', marginTop: 1},
@@ -138,10 +154,16 @@ export default function HireAgentView({agent, onBack}) {
           React.createElement(TextInput, {
             value: maxAcceptedCredits != null ? String(maxAcceptedCredits) : '',
             onChange: (val) => {
+              // Empty string or invalid input = null
+              if (!val || val.trim() === '') {
+                setMaxAcceptedCredits(null);
+                return;
+              }
               const n = Number(val);
-              setMaxAcceptedCredits(Number.isFinite(n) ? n : null);
+              // Only accept valid positive numbers or zero
+              setMaxAcceptedCredits(Number.isFinite(n) && n >= 0 ? n : null);
             },
-            placeholder: agent?.price?.credits != null ? String(agent.price.credits) : 'e.g., 2.5',
+            placeholder: agent?.price?.credits != null ? String(agent.price.credits) : 'e.g., 2.5 (leave empty for no limit)',
             focus: false
           })
         ),
@@ -159,11 +181,29 @@ export default function HireAgentView({agent, onBack}) {
                 setSubmitError(null);
                 setSubmitting(true);
                 try {
-                  const payload = {inputData: values, maxAcceptedCredits};
+                  // Clean up values: remove empty strings for optional fields
+                  const cleanedValues = {};
+                  for (const [key, value] of Object.entries(values)) {
+                    // Only include non-empty values or required fields
+                    if (value !== '' && value != null) {
+                      cleanedValues[key] = value;
+                    }
+                  }
+
+                  console.error('[DEBUG] Submitting values:', JSON.stringify(cleanedValues, null, 2));
+                  console.error('[DEBUG] Max accepted credits:', maxAcceptedCredits);
+
+                  const payload = {inputData: cleanedValues, maxAcceptedCredits};
                   const {job: created} = await createAgentJob(agent.id, payload);
                   setJob(created || null);
                 } catch (e) {
-                  setSubmitError(e?.message || 'Failed to hire agent');
+                  // Extract detailed error message from API response
+                  let errorMsg = e?.message || 'Failed to hire agent';
+                  if (e?.body) {
+                    const body = typeof e.body === 'string' ? e.body : JSON.stringify(e.body, null, 2);
+                    errorMsg += `\n\nServer response:\n${body}`;
+                  }
+                  setSubmitError(errorMsg);
                 } finally {
                   setSubmitting(false);
                 }
