@@ -18,6 +18,10 @@ import {
   isTaskDone,
   normalizeTaskStatus
 } from '../utils/status.mjs';
+import {
+  createTaskCommentPreview,
+  extractTaskCommentArtifacts
+} from '../utils/task-comment.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
@@ -30,12 +34,59 @@ function renderDate(value) {
 
 function renderEventSummary(event) {
   const statusLabel = event?.status ? getTaskStatusLabel(event.status) : null;
-  const comment = event?.comment ? String(event.comment).trim() : null;
+  const comment = event?.comment ? createTaskCommentPreview(event.comment, 140) : null;
 
   if (statusLabel && comment) return `${statusLabel} • ${comment}`;
   if (statusLabel) return statusLabel;
   if (comment) return comment;
   return event?.origin || event?.id || 'Event';
+}
+
+function renderInlineStrong(line) {
+  const parts = String(line || '').split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    const match = part.match(/^\*\*([^*]+)\*\*$/);
+    if (match) {
+      return React.createElement(Text, {key: index, bold: true}, match[1]);
+    }
+    return React.createElement(Text, {key: index}, part);
+  });
+}
+
+function renderMarkdown(markdown) {
+  const lines = String(markdown || '').split('\n');
+
+  return React.createElement(
+    Box,
+    {flexDirection: 'column', width: '100%'},
+    ...lines.map((line, index) => {
+      if (/^\s*#{1,3}\s+/.test(line)) {
+        const clean = line.replace(/^\s*#{1,3}\s+/, '');
+        return React.createElement(Text, {key: index, bold: true, color: BRAND_HEX}, clean);
+      }
+
+      if (/^\s*[-*]\s+/.test(line)) {
+        const clean = line.replace(/^\s*[-*]\s+/, '');
+        return React.createElement(Text, {key: index}, '• ', ...renderInlineStrong(clean));
+      }
+
+      return React.createElement(Text, {key: index}, ...renderInlineStrong(line));
+    })
+  );
+}
+
+function getArtifactSummary(artifacts) {
+  if (!artifacts) return null;
+
+  const parts = [];
+  if (artifacts.files?.length) {
+    parts.push(`${artifacts.files.length} deliverable${artifacts.files.length === 1 ? '' : 's'}`);
+  }
+  if (artifacts.links?.length) {
+    parts.push(`${artifacts.links.length} link${artifacts.links.length === 1 ? '' : 's'}`);
+  }
+
+  return parts.length > 0 ? parts.join(' • ') : null;
 }
 
 export default function TaskDetailsView({task, onBack, onAddJob}) {
@@ -115,13 +166,36 @@ export default function TaskDetailsView({task, onBack, onAddJob}) {
     return items;
   }, [canAddJob, canToggleStatus, normalizedTaskStatus]);
 
-  const sortedEvents = useMemo(() => {
+  const orderedEvents = useMemo(() => {
     return [...events].sort((left, right) => {
       const leftTime = new Date(left?.createdAt || 0).getTime();
       const rightTime = new Date(right?.createdAt || 0).getTime();
       return rightTime - leftTime;
-    }).slice(0, 5);
+    });
   }, [events]);
+
+  const sortedEvents = useMemo(() => orderedEvents.slice(0, 5), [orderedEvents]);
+
+  const highlightedEvent = useMemo(() => {
+    const latestCommentEvent = orderedEvents.find(event => (
+      event?.comment &&
+      String(event.comment).trim()
+    )) || null;
+
+    if (!isTaskDone(normalizedTaskStatus)) {
+      return latestCommentEvent;
+    }
+
+    return orderedEvents.find(event => (
+      normalizeTaskStatus(event?.status) === 'COMPLETED' &&
+      event?.comment &&
+      String(event.comment).trim()
+    )) || latestCommentEvent;
+  }, [normalizedTaskStatus, orderedEvents]);
+
+  const highlightedArtifacts = useMemo(() => {
+    return highlightedEvent?.comment ? extractTaskCommentArtifacts(highlightedEvent.comment) : null;
+  }, [highlightedEvent]);
 
   const handleSelect = async item => {
     if (item.value === '__back') {
@@ -173,7 +247,10 @@ export default function TaskDetailsView({task, onBack, onAddJob}) {
         ),
         React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
           React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Jobs'),
-          jobs.length === 0 && React.createElement(Text, {dimColor: true}, 'No jobs added yet'),
+          jobs.length === 0 && React.createElement(Box, {flexDirection: 'column'},
+            React.createElement(Text, {dimColor: true}, 'No direct agent jobs added yet'),
+            React.createElement(Text, {dimColor: true}, 'Coworker results appear in Latest Result and Recent Activity below')
+          ),
           jobs.length > 0 && jobs.map(job => React.createElement(
             Box,
             {key: job.id || `${job.agentId}-${job.createdAt}`, flexDirection: 'row', justifyContent: 'space-between', width: '100%'},
@@ -187,15 +264,69 @@ export default function TaskDetailsView({task, onBack, onAddJob}) {
             )
           ))
         ),
+        highlightedArtifacts && (highlightedArtifacts.body || highlightedArtifacts.files.length > 0 || highlightedArtifacts.links.length > 0) && React.createElement(
+          Box,
+          {marginTop: 1, flexDirection: 'column'},
+          React.createElement(
+            Text,
+            {color: BRAND_HEX, bold: true},
+            normalizeTaskStatus(highlightedEvent?.status) === 'COMPLETED' ? 'Latest Result' : 'Latest Update'
+          ),
+          React.createElement(Text, {dimColor: true}, renderDate(highlightedEvent?.createdAt)),
+          highlightedArtifacts.body && React.createElement(Box, {marginTop: 1}, renderMarkdown(highlightedArtifacts.body)),
+          highlightedArtifacts.files.length > 0 && React.createElement(
+            Box,
+            {marginTop: 1, flexDirection: 'column'},
+            React.createElement(Text, {bold: true}, 'Deliverables'),
+            ...highlightedArtifacts.files.map((file, index) => React.createElement(
+              Box,
+              {
+                key: `${file.url}-${index}`,
+                flexDirection: 'column',
+                marginTop: 1,
+                borderStyle: 'single',
+                borderColor: 'gray',
+                paddingX: 1
+              },
+              React.createElement(Text, {bold: true}, file.name || 'Attachment'),
+              React.createElement(Text, {color: 'cyan', wrap: 'truncate'}, file.url)
+            ))
+          ),
+          highlightedArtifacts.links.length > 0 && React.createElement(
+            Box,
+            {marginTop: 1, flexDirection: 'column'},
+            React.createElement(Text, {bold: true}, 'Links'),
+            ...highlightedArtifacts.links.map((link, index) => React.createElement(
+              Box,
+              {
+                key: `${link.url}-${index}`,
+                flexDirection: 'column',
+                marginTop: 1,
+                borderStyle: 'single',
+                borderColor: 'gray',
+                paddingX: 1
+              },
+              React.createElement(Text, {bold: true}, link.title || 'Link'),
+              link.description && React.createElement(Text, {dimColor: true}, link.description),
+              React.createElement(Text, {color: 'cyan', wrap: 'truncate'}, link.url)
+            ))
+          )
+        ),
         React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
           React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Recent Activity'),
           sortedEvents.length === 0 && React.createElement(Text, {dimColor: true}, 'No task activity yet'),
-          sortedEvents.length > 0 && sortedEvents.map(event => React.createElement(
-            Box,
-            {key: event.id || `${event.createdAt}-${event.origin}`, flexDirection: 'column', marginBottom: 1},
-            React.createElement(Text, null, renderEventSummary(event)),
-            React.createElement(Text, {dimColor: true}, renderDate(event.createdAt))
-          ))
+          sortedEvents.length > 0 && sortedEvents.map(event => {
+            const artifacts = event?.comment ? extractTaskCommentArtifacts(event.comment) : null;
+            const artifactSummary = getArtifactSummary(artifacts);
+
+            return React.createElement(
+              Box,
+              {key: event.id || `${event.createdAt}-${event.origin}`, flexDirection: 'column', marginBottom: 1},
+              React.createElement(Text, null, renderEventSummary(event)),
+              artifactSummary && React.createElement(Text, {dimColor: true}, artifactSummary),
+              React.createElement(Text, {dimColor: true}, renderDate(event.createdAt))
+            );
+          })
         ),
         actionBusy && React.createElement(Box, {marginTop: 1},
           React.createElement(PixelLoader, {label: 'Updating task...'})
