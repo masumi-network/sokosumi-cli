@@ -4,6 +4,7 @@ import ScreenContainer from '../components/screen-container.mjs';
 import {fetchAgentJobs} from '../api/index.mjs';
 import SelectInput from '../components/select-input.mjs';
 import PixelLoader from '../components/pixel-loader.mjs';
+import {getJobStatusLabel, getJobStatusTone} from '../utils/status.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
@@ -53,7 +54,7 @@ export default function AgentDetailsView({agent, onBack}) {
       ),
       React.createElement(Box, {marginLeft: 2, flexDirection: 'row', flexGrow: 0, flexShrink: 0},
         React.createElement(Text, {dimColor: true}, 'Status: '),
-        React.createElement(Text, null, job.status || '-'),
+        React.createElement(Text, {color: getJobStatusTone(job.status)}, getJobStatusLabel(job.status)),
         React.createElement(Text, {dimColor: true}, '   Started: '),
         React.createElement(Text, null, renderDate(job.startedAt))
       )
@@ -157,7 +158,7 @@ export default function AgentDetailsView({agent, onBack}) {
     selectedJob && React.createElement(Box, {marginTop: 1, flexDirection: 'column', width: '100%'},
       React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Job Details'),
       React.createElement(Text, {bold: true}, selectedJob.name || selectedJob.id || 'Job'),
-      React.createElement(Text, {dimColor: true}, `Status: ${selectedJob.status || '-'}`),
+      React.createElement(Text, {dimColor: true}, `Status: ${getJobStatusLabel(selectedJob.status)}`),
       React.createElement(Text, {dimColor: true}, `Started: ${renderDate(selectedJob.startedAt)}`),
 
       // Input
@@ -198,8 +199,9 @@ export default function AgentDetailsView({agent, onBack}) {
       React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
         React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Output'),
         (() => {
-          const parsed = parseJsonString(selectedJob.output);
-          const resultMd = parsed && typeof parsed.result === 'string' ? parsed.result : (selectedJob.output || '—');
+          const outputValue = selectedJob.result || selectedJob.output;
+          const parsed = parseJsonString(outputValue);
+          const resultMd = parsed && typeof parsed.result === 'string' ? parsed.result : (outputValue || '—');
           return renderMarkdown(resultMd);
         })()
       )
@@ -221,5 +223,4 @@ export default function AgentDetailsView({agent, onBack}) {
     )
   );
 }
-
 

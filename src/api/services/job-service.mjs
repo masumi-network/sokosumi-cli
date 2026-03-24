@@ -101,14 +101,19 @@ export async function fetchJobInputRequest(jobId, {signal} = {}) {
  * Provides additional input to a job
  * @param {string} jobId - Job ID
  * @param {Object} data
+ * @param {string} data.eventId - Event ID awaiting input
  * @param {Array} data.inputData - Input data to provide
  * @param {Object} options
  * @param {AbortSignal} [options.signal] - Abort signal
  * @returns {Promise<{response: ApiResponse}>}
  */
-export async function submitJobInput(jobId, {inputData} = {}, {signal} = {}) {
+export async function submitJobInput(jobId, {eventId, inputData} = {}, {signal} = {}) {
   if (!jobId) throw new Error('jobId is required');
-  const payload = {inputData: inputData || []};
+  if (!eventId) throw new Error('eventId is required');
+  const payload = {
+    eventId,
+    inputData: inputData || {}
+  };
   const json = await httpPost(`${JOBS_PATH}/${jobId}/inputs`, payload, {signal});
   const resp = ApiResponse.from(json);
   return {response: resp};

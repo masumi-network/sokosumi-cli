@@ -6,7 +6,14 @@ const BRAND_HEX = '#7F00FF';
 export default function SelectInput({items, onSelect, initialIndex = 0, listen = true}) {
   const [index, setIndex] = useState(initialIndex);
 
-  // Reset index if it's out of bounds when items change
+  // Keep the controlled initial index in sync when parents intentionally reset the cursor.
+  useEffect(() => {
+    if (!Number.isFinite(initialIndex)) return;
+    const nextIndex = Math.max(0, Math.min(initialIndex, Math.max(0, items.length - 1)));
+    setIndex(nextIndex);
+  }, [initialIndex, items.length]);
+
+  // Reset index if it's out of bounds when items change.
   useEffect(() => {
     if (index >= items.length) {
       setIndex(Math.max(0, items.length - 1));
@@ -27,7 +34,7 @@ export default function SelectInput({items, onSelect, initialIndex = 0, listen =
         return newIndex >= items.length ? 0 : newIndex;
       });
     }
-    if (key.return) onSelect && onSelect(items[index]);
+    if (key.return && items[index]) onSelect && onSelect(items[index]);
   });
 
   return React.createElement(
@@ -45,5 +52,4 @@ export default function SelectInput({items, onSelect, initialIndex = 0, listen =
     ))
   );
 }
-
 

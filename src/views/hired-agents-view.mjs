@@ -1,9 +1,10 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Box, Text} from 'ink';
+import {Box, Text, useInput} from 'ink';
 import ScreenContainer from '../components/screen-container.mjs';
 import SelectInput from '../components/select-input.mjs';
 import PixelLoader from '../components/pixel-loader.mjs';
 import {fetchJobs, fetchJobFiles, fetchJobLinks} from '../api/index.mjs';
+import {getJobStatusLabel, getJobStatusTone, isJobActive} from '../utils/status.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
@@ -44,10 +45,6 @@ export default function HiredAgentsView({onBack}) {
   };
 
   const JobRow = ({job}) => {
-    const statusColor = job.status === 'completed' ? 'green' :
-                       job.status === 'failed' ? 'red' :
-                       job.status === 'running' ? 'yellow' : 'white';
-
     return React.createElement(
       Box,
       {flexDirection: 'row', justifyContent: 'space-between', width: '100%'},
@@ -56,7 +53,7 @@ export default function HiredAgentsView({onBack}) {
         React.createElement(Text, {dimColor: true, wrap: 'truncate'}, `Created: ${renderDate(job.createdAt)}`)
       ),
       React.createElement(Box, {marginLeft: 2, flexDirection: 'column', flexGrow: 0, flexShrink: 0, alignItems: 'flex-end'},
-        React.createElement(Text, {color: statusColor}, job.status || '-'),
+        React.createElement(Text, {color: getJobStatusTone(job.status)}, getJobStatusLabel(job.status)),
         job.credits != null && React.createElement(Text, {dimColor: true}, `${job.credits} cr`)
       )
     );
@@ -99,6 +96,12 @@ export default function HiredAgentsView({onBack}) {
     setJobFiles([]);
     setJobLinks([]);
   };
+
+  useInput((input, key) => {
+    if (key.escape && selectedJob) {
+      returnToJobsList();
+    }
+  }, {isActive: Boolean(selectedJob)});
 
   const renderInlineStrong = (line) => {
     const parts = String(line || '').split(/(\*\*[^*]+\*\*)/g);
@@ -152,15 +155,15 @@ export default function HiredAgentsView({onBack}) {
       // Selected job details
       selectedJob && React.createElement(Box, {marginTop: 1, flexDirection: 'column', width: '100%'},
         React.createElement(Text, {color: BRAND_HEX, bold: true}, selectedJob.name || selectedJob.id || 'Job Details'),
-        React.createElement(Text, {dimColor: true}, `Status: ${selectedJob.status || '-'}`),
+        React.createElement(Text, {dimColor: true}, `Status: ${getJobStatusLabel(selectedJob.status)}`),
         React.createElement(Text, {dimColor: true}, `Created: ${renderDate(selectedJob.createdAt)}`),
         selectedJob.completedAt && React.createElement(Text, {dimColor: true}, `Completed: ${renderDate(selectedJob.completedAt)}`),
         selectedJob.credits != null && React.createElement(Text, {dimColor: true}, `Credits: ${selectedJob.credits}`),
 
         // Result
-        selectedJob.result && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
+        (selectedJob.result || selectedJob.output) && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
           React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Result'),
-          renderMarkdown(selectedJob.result)
+          renderMarkdown(selectedJob.result || selectedJob.output)
         ),
 
         // Files (images, PDFs, etc.)
@@ -196,8 +199,8 @@ export default function HiredAgentsView({onBack}) {
         ),
 
         // No result message
-        !selectedJob.result && !loadingDetails && jobFiles.length === 0 && jobLinks.length === 0 && React.createElement(Box, {marginTop: 1},
-          React.createElement(Text, {dimColor: true}, selectedJob.status === 'running' ? 'Job is still running...' : 'No result yet')
+        !(selectedJob.result || selectedJob.output) && !loadingDetails && jobFiles.length === 0 && jobLinks.length === 0 && React.createElement(Box, {marginTop: 1},
+          React.createElement(Text, {dimColor: true}, isJobActive(selectedJob.status) ? 'Job is still running...' : 'No result yet')
         ),
 
         // Back button

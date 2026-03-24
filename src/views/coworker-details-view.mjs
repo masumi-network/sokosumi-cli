@@ -1,10 +1,11 @@
 import React from 'react';
 import {Box, Text, useInput} from 'ink';
 import ScreenContainer from '../components/screen-container.mjs';
+import SelectInput from '../components/select-input.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
-export default function CoworkerDetailsView({coworker, onBack}) {
+export default function CoworkerDetailsView({coworker, onBack, onCreateTask}) {
   useInput((input, key) => {
     if (key.escape) {
       onBack && onBack();
@@ -53,6 +54,18 @@ export default function CoworkerDetailsView({coworker, onBack}) {
         React.createElement(Text, {color: coworker.status === 'active' ? 'green' : 'yellow'}, coworker.status || 'unknown')
       ),
       React.createElement(Box, {marginTop: 2},
+        React.createElement(SelectInput, {
+          items: [
+            {label: 'Create Task', value: '__create'},
+            {label: 'Back', value: '__back'}
+          ],
+          onSelect: item => {
+            if (item.value === '__create') return onCreateTask && onCreateTask(coworker);
+            return onBack && onBack();
+          }
+        })
+      ),
+      React.createElement(Box, {marginTop: 1},
         React.createElement(Text, {dimColor: true}, 'Press Esc to go back')
       )
     )

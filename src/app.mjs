@@ -19,6 +19,7 @@ import CoworkerDetailsView from './views/coworker-details-view.mjs';
 import TasksView from './views/tasks-view.mjs';
 import CreateTaskView from './views/create-task-view.mjs';
 import DashboardView from './views/dashboard-view.mjs';
+import TaskDetailsView from './views/task-details-view.mjs';
 
 const BRAND_HEX = '#7F00FF'; // RGB(127,0,255)
 
@@ -93,7 +94,7 @@ function SetupApiKey({onDone}) {
 
 function MainMenu() {
   const {exit} = useApp();
-  const [mode, setMode] = useState('menu'); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire' | 'coworkers' | 'coworker' | 'tasks' | 'createTask' | 'dashboard'
+  const [mode, setMode] = useState('menu'); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire' | 'coworkers' | 'coworker' | 'tasks' | 'task' | 'taskAgents' | 'taskHire' | 'createTask' | 'dashboard'
   const [nl, setNl] = useState('');
   const [section, setSection] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
@@ -104,9 +105,11 @@ function MainMenu() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [selectedCoworker, setSelectedCoworker] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [taskReturnMode, setTaskReturnMode] = useState('dashboard');
 
   const items = useMemo(() => ([
     {label: '📊 Dashboard (Live Tasks)', value: 'dashboard'},
+    {label: 'My Tasks', value: 'tasks'},
     {label: 'My Account', value: 'account'},
     {label: 'Agents Gallery', value: 'agents'},
     {label: 'Coworkers (Multi-Agent)', value: 'coworkers'},
@@ -125,6 +128,7 @@ function MainMenu() {
     setAsked('');
     setSection(item.value);
     if (item.value === 'dashboard') return setMode('dashboard');
+    if (item.value === 'tasks') return setMode('tasks');
     if (item.value === 'account') return setMode('account');
     if (item.value === 'agents') return setMode('agents');
     if (item.value === 'coworkers') return setMode('coworkers');
@@ -149,6 +153,18 @@ function MainMenu() {
       }
       if (mode === 'createTask') {
         setMode('coworkers');
+        return;
+      }
+      if (mode === 'task') {
+        setMode(taskReturnMode);
+        return;
+      }
+      if (mode === 'taskAgents') {
+        setMode('task');
+        return;
+      }
+      if (mode === 'taskHire') {
+        setMode('taskAgents');
         return;
       }
       if (mode === 'jobs' || mode === 'tasks') {
@@ -417,7 +433,11 @@ function MainMenu() {
   if (mode === 'coworker') {
     return React.createElement(CoworkerDetailsView, {
       coworker: selectedCoworker,
-      onBack: () => setMode('coworkers')
+      onBack: () => setMode('coworkers'),
+      onCreateTask: (coworker) => {
+        setSelectedCoworker(coworker);
+        setMode('createTask');
+      }
     });
   }
 
@@ -426,8 +446,8 @@ function MainMenu() {
       onBack: () => setMode('menu'),
       onSelectTask: (task) => {
         setSelectedTask(task);
-        // For now, go back to menu - will add task details view
-        setMode('menu');
+        setTaskReturnMode('dashboard');
+        setMode('task');
       }
     });
   }
@@ -438,7 +458,8 @@ function MainMenu() {
       onBack: () => setMode('coworkers'),
       onTaskCreated: (task) => {
         setSelectedTask(task);
-        setMode('dashboard');
+        setTaskReturnMode('dashboard');
+        setMode('task');
       }
     });
   }
@@ -448,8 +469,43 @@ function MainMenu() {
       onBack: () => setMode('menu'),
       onSelectTask: (task) => {
         setSelectedTask(task);
-        // TODO: Add task details view - will implement next
-        setMode('menu');
+        setTaskReturnMode('tasks');
+        setMode('task');
+      }
+    });
+  }
+
+  if (mode === 'task') {
+    return React.createElement(TaskDetailsView, {
+      task: selectedTask,
+      onBack: () => setMode(taskReturnMode),
+      onAddJob: (task) => {
+        setSelectedTask(task);
+        setMode('taskAgents');
+      }
+    });
+  }
+
+  if (mode === 'taskAgents') {
+    const handlePickTaskAgent = (agent) => {
+      setSelectedAgent(agent);
+      setMode('taskHire');
+    };
+
+    return React.createElement(AgentsView, {
+      onBack: () => setMode('task'),
+      onSelectAgent: handlePickTaskAgent,
+      onHireAgent: handlePickTaskAgent
+    });
+  }
+
+  if (mode === 'taskHire') {
+    return React.createElement(HireAgentView, {
+      agent: selectedAgent,
+      task: selectedTask,
+      onBack: () => setMode('taskAgents'),
+      onJobCreated: () => {
+        setMode('task');
       }
     });
   }
@@ -549,5 +605,3 @@ export default function App() {
 
   return React.createElement(MainMenu);
 }
-
-

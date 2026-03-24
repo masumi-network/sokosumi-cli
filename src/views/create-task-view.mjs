@@ -5,6 +5,7 @@ import TextInput from '../components/text-input.mjs';
 import SelectInput from '../components/select-input.mjs';
 import PixelLoader from '../components/pixel-loader.mjs';
 import {createTask} from '../api/index.mjs';
+import {getTaskStatusLabel} from '../utils/status.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
@@ -89,6 +90,7 @@ export default function CreateTaskView({coworker, onBack, onTaskCreated}) {
       step === 'description' && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
         React.createElement(Text, {bold: true}, 'Task Description (optional, no limit)'),
         React.createElement(Text, {dimColor: true}, 'Add full details, requirements, context, etc.'),
+        React.createElement(Text, {dimColor: true}, 'New tasks are created as READY so they appear in Todo immediately'),
         React.createElement(Box, {marginTop: 1},
           React.createElement(Text, {color: BRAND_HEX}, '› '),
           React.createElement(TextInput, {
@@ -114,7 +116,7 @@ export default function CreateTaskView({coworker, onBack, onTaskCreated}) {
         createdTask && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
           React.createElement(Text, {bold: true}, createdTask.name || 'Task'),
           createdTask.description && React.createElement(Text, {dimColor: true}, createdTask.description),
-          React.createElement(Text, {dimColor: true}, `Status: ${createdTask.status || 'DRAFT'}`)
+          React.createElement(Text, {dimColor: true}, `Status: ${getTaskStatusLabel(createdTask.status || 'READY')}`)
         ),
         React.createElement(Box, {marginTop: 2},
           React.createElement(SelectInput, {

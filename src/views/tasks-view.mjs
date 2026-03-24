@@ -3,25 +3,26 @@ import {Box, Text} from 'ink';
 import ScreenContainer from '../components/screen-container.mjs';
 import SelectInput from '../components/select-input.mjs';
 import PixelLoader from '../components/pixel-loader.mjs';
-import {fetchTasks} from '../api/index.mjs';
+import {fetchCoworkers, fetchTasks} from '../api/index.mjs';
+import {getTaskStatusLabel, getTaskStatusTone} from '../utils/status.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
-function TaskRow({task}) {
+function TaskRow({task, coworkerLabel}) {
   const jobCount = task?.jobs?.length || 0;
   return React.createElement(
     Box,
     {flexDirection: 'row', justifyContent: 'space-between', width: '100%'},
     React.createElement(Box, {flexDirection: 'column', flexGrow: 1, flexShrink: 1},
       React.createElement(Text, {bold: true, wrap: 'truncate'}, task.name || 'Unnamed Task'),
-      task.coworkerName && React.createElement(Text, {dimColor: true, wrap: 'truncate'}, `Coworker: ${task.coworkerName}`),
+      coworkerLabel && React.createElement(Text, {dimColor: true, wrap: 'truncate'}, `Coworker: ${coworkerLabel}`),
       React.createElement(Text, {dimColor: true, wrap: 'truncate'}, `${jobCount} job${jobCount !== 1 ? 's' : ''}`)
     ),
     React.createElement(Box, {marginLeft: 2, flexGrow: 0, flexShrink: 0},
       React.createElement(Text, {
-        color: task.status === 'completed' ? 'green' : task.status === 'failed' ? 'red' : BRAND_HEX,
+        color: getTaskStatusTone(task.status),
         bold: true
-      }, task.status || 'unknown')
+      }, getTaskStatusLabel(task.status))
     )
   );
 }
@@ -29,6 +30,7 @@ function TaskRow({task}) {
 export default function TasksView({onBack, onSelectTask}) {
   const [status, setStatus] = useState('loading');
   const [tasks, setTasks] = useState([]);
+  const [coworkersById, setCoworkersById] = useState({});
   const [error, setError] = useState(null);
 
   const load = async () => {
@@ -36,7 +38,11 @@ export default function TasksView({onBack, onSelectTask}) {
     setError(null);
     try {
       const {tasks: list} = await fetchTasks();
+      const coworkersResult = await fetchCoworkers().catch(() => ({coworkers: []}));
+      const coworkers = coworkersResult?.coworkers || [];
+      const coworkerMap = Object.fromEntries((coworkers || []).map(coworker => [coworker.id, coworker.name || coworker.id]));
       setTasks(list);
+      setCoworkersById(coworkerMap);
       setStatus('ready');
     } catch (e) {
       setError(e?.message || 'Failed to load tasks');
@@ -51,12 +57,15 @@ export default function TasksView({onBack, onSelectTask}) {
       label: t.name || t.id,
       value: t.id,
       task: t,
-      render: () => React.createElement(TaskRow, {task: t})
+      render: () => React.createElement(TaskRow, {
+        task: t,
+        coworkerLabel: coworkersById[t.coworkerId] || t.coworkerName || t.coworkerId || null
+      })
     }));
     rows.push({label: 'Refresh', value: '__refresh'});
     rows.push({label: 'Back', value: '__back'});
     return rows;
-  }, [tasks]);
+  }, [tasks, coworkersById]);
 
   const handleSelect = item => {
     if (item.value === '__back') return onBack && onBack();

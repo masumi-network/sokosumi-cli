@@ -1,13 +1,17 @@
 export class TaskJob {
-  constructor({id, agentId, agentName, status, createdAt, completedAt, input, output}) {
+  constructor({id, agentId, agentName, name, status, createdAt, updatedAt, completedAt, input, output, result, credits}) {
     this.id = id ?? null;
     this.agentId = agentId ?? null;
     this.agentName = agentName ?? null;
+    this.name = name ?? null;
     this.status = status ?? null;
     this.createdAt = createdAt ? new Date(createdAt) : null;
+    this.updatedAt = updatedAt ? new Date(updatedAt) : null;
     this.completedAt = completedAt ? new Date(completedAt) : null;
     this.input = input ?? null;
-    this.output = output ?? null;
+    this.output = output ?? result ?? null;
+    this.result = result ?? null;
+    this.credits = Number.isFinite(credits) ? credits : null;
   }
 
   /** @param {unknown} input */
@@ -18,17 +22,36 @@ export class TaskJob {
 }
 
 export class Task {
-  constructor({id, createdAt, updatedAt, name, description, status, coworkerId, coworkerName, jobs, totalCredits}) {
+  constructor({
+    id,
+    createdAt,
+    updatedAt,
+    userId,
+    organizationId,
+    name,
+    description,
+    status,
+    coworkerId,
+    coworkerName,
+    coworker,
+    jobs,
+    totalCredits,
+    credits,
+    events
+  }) {
     this.id = id ?? null;
     this.createdAt = createdAt ? new Date(createdAt) : null;
     this.updatedAt = updatedAt ? new Date(updatedAt) : null;
+    this.userId = userId ?? null;
+    this.organizationId = organizationId ?? null;
     this.name = name ?? null;
     this.description = description ?? null;
     this.status = status ?? null;
     this.coworkerId = coworkerId ?? null;
-    this.coworkerName = coworkerName ?? null;
+    this.coworkerName = coworkerName ?? coworker?.name ?? null;
     this.jobs = Array.isArray(jobs) ? jobs.map(TaskJob.from) : [];
-    this.totalCredits = Number.isFinite(totalCredits) ? totalCredits : null;
+    this.totalCredits = Number.isFinite(totalCredits) ? totalCredits : (Number.isFinite(credits) ? credits : null);
+    this.events = Array.isArray(events) ? events : [];
   }
 
   /** @param {unknown} input */

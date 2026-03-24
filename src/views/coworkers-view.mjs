@@ -46,21 +46,40 @@ export default function CoworkersView({onBack, onSelectCoworker, onCreateTask}) 
   useEffect(() => { load(); }, []);
 
   const items = useMemo(() => {
-    const rows = coworkers.map(c => ({
-      label: c.name || c.id,
-      value: c.id,
-      coworker: c,
-      render: () => React.createElement(CoworkerRow, {coworker: c})
-    }));
+    const rows = [];
+    for (const coworker of coworkers) {
+      rows.push({
+        label: coworker.name || coworker.id,
+        value: coworker.id,
+        coworker,
+        render: () => React.createElement(CoworkerRow, {coworker})
+      });
+      rows.push({
+        label: `__create:${coworker.id}`,
+        value: `__create:${coworker.id}`,
+        coworker,
+        render: () => React.createElement(
+          Box,
+          {marginLeft: 2},
+          React.createElement(Text, {color: BRAND_HEX, bold: true}, 'Create Task')
+        )
+      });
+    }
     rows.push({label: 'Back', value: '__back'});
     return rows;
   }, [coworkers]);
 
   const handleSelect = item => {
     if (item.value === '__back') return onBack && onBack();
-    // Directly create task when selecting a coworker
+    if (String(item.value || '').startsWith('__create:')) {
+      const id = String(item.value).slice('__create:'.length);
+      const selected = coworkers.find(c => c.id === id) || item.coworker;
+      if (selected) onCreateTask && onCreateTask(selected);
+      return;
+    }
+
     const selected = coworkers.find(c => c.id === item.value) || item.coworker;
-    if (selected) onCreateTask && onCreateTask(selected);
+    if (selected) onSelectCoworker && onSelectCoworker(selected);
   };
 
   return React.createElement(
@@ -78,7 +97,7 @@ export default function CoworkersView({onBack, onSelectCoworker, onCreateTask}) 
         React.createElement(SelectInput, {items, onSelect: handleSelect})
       ),
       React.createElement(Box, {marginTop: 1},
-        React.createElement(Text, {dimColor: true}, 'Select a coworker to create a task • Press Esc to go back')
+        React.createElement(Text, {dimColor: true}, 'Select a coworker for details, or choose "Create Task" • Press Esc to go back')
       )
     )
   );
