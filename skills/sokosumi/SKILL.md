@@ -156,7 +156,7 @@ When reporting back to the human:
 
 ## Validate
 
-- Run `npm run smoke:imports`.
+- Run `pnpm run smoke:imports`.
 - Run the skill validator if this file changes materially.
-- Run `yarn start` for manual flow checks when changing screens or keyboard behavior.
+- Run `pnpm start` for manual flow checks when changing screens or keyboard behavior.
 - Re-test first-run auth, direct agent hire, task creation, and result review after workflow edits.

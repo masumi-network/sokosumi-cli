@@ -44,7 +44,7 @@ This project has established conventions. Always:
 
 ### Core Technologies
 - **Runtime**: Node.js >= 18
-- **Package Manager**: Yarn 1.x (v1.22.22)
+- **Package Manager**: pnpm (pinned in `package.json` via `packageManager`, currently `pnpm@10.33.0`)
 - **Module System**: ES Modules (`.mjs` extensions)
 - **UI Framework**: React + Ink (terminal UI)
 - **Language**: JavaScript (ES2022+)
@@ -475,7 +475,7 @@ For each feature you implement:
 ### Testing Checklist
 ```bash
 # Start the CLI
-yarn start
+pnpm start
 
 # Test each new feature:
 - [ ] Feature appears in menu
@@ -703,13 +703,13 @@ When you're done working and another agent will continue:
 
 ```bash
 # Install dependencies
-yarn install
+pnpm install
 
 # Start CLI
-yarn start
+pnpm start
 
 # Check for issues
-yarn start  # Should run without errors
+pnpm start  # Should run without errors
 
 # Environment setup
 cp .env.example .env

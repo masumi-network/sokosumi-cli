@@ -28,18 +28,18 @@ Browse available agents, hire multi-agent orchestrators, create complex tasks, a
 ## 📋 Requirements
 
 - Node.js >= 18
-- Yarn 1 (v1.22+)
+- pnpm (version pinned via Corepack; see `packageManager` in `package.json`)
 
-The project declares `packageManager: yarn@1.22.22`.
+The project declares `packageManager: pnpm@10.33.0`.
 
 ## 🚀 Installation
 
 ### Local Development
 ```bash
 # From project root
-corepack enable  # optional; Yarn will be available via Corepack
-yarn install
-yarn start
+corepack enable  # optional; respects package.json packageManager field
+pnpm install
+pnpm start
 ```
 
 ### npm Distribution
@@ -258,8 +258,8 @@ All features are powered by the Sokosumi API. The CLI automatically handles:
 
 | Command | Description |
 |---------|-------------|
-| `yarn start` | Run the CLI |
-| `npm run smoke:imports` | Import-check core views and auth flows |
+| `pnpm start` | Run the CLI |
+| `pnpm run smoke:imports` | Import-check core views and auth flows |
 
 ## 🏗️ Architecture
 
@@ -301,8 +301,8 @@ src/
 
 ```bash
 # Reinstall dependencies
-rm -rf node_modules yarn.lock
-yarn install
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
 
 # Check Node version
 node --version  # Should be >= 18
@@ -312,7 +312,7 @@ node --version  # Should be >= 18
 
 ```bash
 # Start the interactive auth flow
-yarn start
+pnpm start
 # Select "Authentication" from the menu
 
 # Inspect local CLI config
@@ -326,7 +326,7 @@ cat ~/.sokosumi/config.json
 rm -rf ~/.sokosumi/
 
 # Restart CLI
-yarn start
+pnpm start
 ```
 
 ## 🗺️ Roadmap

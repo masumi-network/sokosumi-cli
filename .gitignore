@@ -21,11 +21,11 @@
 # package artifacts and caches
 .npm/
 .cache/
+.pnpm-store/
 *.tgz
 
 # lockfiles from other package managers
 package-lock.json
-pnpm-lock.yaml
 bun.lockb
 
 # misc
