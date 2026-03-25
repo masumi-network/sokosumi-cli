@@ -9,8 +9,9 @@ When starting work on this project:
 1. ✅ **Read STATUS.md** - Check current progress and active tasks
 2. ✅ **Read IMPLEMENTATION_PLAN.md** - Understand the architecture
 3. ✅ **Read CURSOR_RULES.md** - API layer conventions
-4. ✅ **Check this file** - Follow coding standards below
-5. ✅ **Update STATUS.md** - Mark tasks in_progress, then completed
+4. ✅ **Read `skills/sokosumi/SKILL.md`** - Follow the live CLI workflow before changing auth or navigation
+5. ✅ **Check this file** - Follow coding standards below
+6. ✅ **Update STATUS.md** - Note current work, then record completion
 
 ## Core Principles
 
@@ -71,8 +72,7 @@ sokosumi-cli/
 │   └── sokosumi.mjs
 ├── src/
 │   ├── app.mjs            # Main application component
-│   ├── auth/              # Authentication (NEW - Phase 1)
-│   ├── sdk/               # SDK for integrations (NEW - Phase 4)
+│   ├── auth/              # Authentication helpers
 │   ├── api/               # API layer
 │   │   ├── http-client.mjs
 │   │   ├── models/        # Data models
@@ -80,8 +80,15 @@ sokosumi-cli/
 │   ├── components/        # Reusable UI components
 │   ├── views/             # Screen/page components
 │   └── utils/             # Helper utilities
-└── examples/              # Integration examples (NEW - Phase 4)
+├── skills/
+│   └── sokosumi/
+│       └── SKILL.md       # Repo-local Sokosumi workflow skill
+└── package.json           # Scripts and package metadata
 ```
+
+**Planned Later**:
+- `src/sdk/` for programmatic integration support
+- `examples/` for SDK and automation examples
 
 ### File Naming Conventions
 - **Directories**: `kebab-case` (e.g., `auth-manager/`)
@@ -566,15 +573,15 @@ function handleSelect(item) {
 ### Before Starting a Task
 1. Open `STATUS.md`
 2. Find the task in the relevant phase
-3. Change `[ ]` to `[x]` if completing, or mark as "in_progress" in the phase status
-4. Add your name/agent ID to "Current Work Items"
+3. Add or update the matching note in "Current Work Items"
+4. If the task is documentation or cleanup work, add a short changelog-style note so the next agent can see what moved
 
 ### After Completing a Task
 1. Mark task as complete: `[x]`
 2. Update phase progress percentage
 3. Update "Current Work Items" → "Next Up"
 4. Add notes about the implementation
-5. Commit the STATUS.md update
+5. Add a suggested commit message only if it helps the handoff; do not run git commands
 
 ### Example Status Update
 ```markdown
@@ -650,10 +657,12 @@ The project uses pixel art styling. See `logo_sokosumi_pixelart.txt` and `src/co
 ## References
 
 ### Internal Documents
+- `README.md` - Repo and CLI overview
 - `IMPLEMENTATION_PLAN.md` - Architecture and design
 - `STATUS.md` - Current progress tracking
 - `CURSOR_RULES.md` - API layer conventions
 - `CHANGELOG.md` - Version history
+- `skills/sokosumi/SKILL.md` - Live Sokosumi workflow and navigation guidance
 
 ### External References
 - [Ink Documentation](https://github.com/vadimdemedes/ink)
@@ -684,7 +693,7 @@ When you're done working and another agent will continue:
    - Ensure code runs without errors
    - Leave clear comments for complex sections
 
-4. **Commit Message** (user will commit, but document)
+4. **Suggested Commit Message** (optional; user handles git)
    ```
    Add suggested commit message in STATUS.md:
 
@@ -727,5 +736,5 @@ cp .env.example .env
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-03-24
+**Last Updated**: 2026-03-25
 **For**: AI Agents working on Sokosumi CLI upgrade

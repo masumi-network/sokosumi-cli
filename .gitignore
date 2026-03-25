@@ -56,12 +56,14 @@ next-env.d.ts
 .vscode/
 .idea/
 .cursor/
+.agents/
 .codex/
 CURSOR_RULES.md
 .claude/
 *.swp
 *.swo
 *~
+skills-lock.json
 
 # Development/internal documentation (not for public repo)
 AGENTS.md

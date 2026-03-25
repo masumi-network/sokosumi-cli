@@ -3,15 +3,21 @@
 These rules standardize how to add API endpoints and wire them into screens.
 
 ### Environment
-- **Required env vars**: `SOKOSUMI_API_URL`, `SOKOSUMI_API_KEY`
+- **Primary config**: `SOKOSUMI_API_URL`
+- **Authentication sources**:
+  - `SOKOSUMI_AUTH_TOKEN`
+  - `SOKOSUMI_API_KEY`
+  - `~/.sokosumi/config.json` and `~/.sokosumi/credentials.json` via `src/utils/env.mjs`
 - **Access**:
   - Load once via `loadEnvFromLocalFile()` from `src/utils/env.mjs`.
-  - Read using `getApiBaseUrlFromEnv()` and `getApiKeyFromEnv()`.
+  - Read using `getApiBaseUrlFromEnv()`, `getApiKeyFromEnv()`, and auth-manager helpers when needed.
 
 ### HTTP Client
 - Use `src/api/http-client.mjs` for all requests. Do not use `fetch` directly in UI/components.
 - Paths are appended to `SOKOSUMI_API_URL` with clean slash handling.
-- Always send header `x-api-key: <SOKOSUMI_API_KEY>` and `content-type: application/json`.
+- The shared client always sends `Authorization: Bearer <token-or-api-key>` plus `content-type: application/json`.
+- The client prefers auth tokens over API keys when both exist.
+- Auth-specific helpers such as `src/auth/magic-link.mjs` may use `fetch` directly when they are handling pre-auth flows.
 - Errors:
   - Non-2xx responses throw with `status` and parsed `body` (if JSON) on the `Error`.
   - JSON parse failures throw with `cause`, `status`, and raw `body`.
@@ -55,7 +61,7 @@ import {httpGet} from '../http-client.mjs';
 import {ApiResponse} from '../models/api-response.mjs';
 import {Thing} from '../models/thing.mjs';
 
-const THING_PATH = '/api/v1/things/:id';
+const THING_PATH = '/v1/things/:id';
 
 export async function fetchThing(id, {signal} = {}) {
   const path = THING_PATH.replace(':id', encodeURIComponent(id));
@@ -88,19 +94,18 @@ const {thing} = await fetchThing('abc123');
 - Convert timestamp strings to `Date` in models.
 
 ### Checklist for Adding a New Endpoint/Screen
-1. Ensure `.env` has `SOKOSUMI_API_URL` and `SOKOSUMI_API_KEY`.
+1. Ensure config resolution is clear: `.env`, `~/.sokosumi/config.json`, or `~/.sokosumi/credentials.json`.
 2. Define or update a model in `src/api/models/` with `static from()` and date parsing.
 3. Add a service in `src/api/services/` that calls the endpoint via `httpGet` (or future `httpPost`/etc.).
 4. Wrap the result with `ApiResponse.from` and map to your model.
 5. Export from `src/api/index.mjs`.
 6. Use the service in the screen container and pass the model to UI components.
-7. Run lints and basic execution to confirm no errors.
+7. If the change affects workflow or auth behavior, review `skills/sokosumi/SKILL.md` and keep it aligned.
+8. Run `pnpm run smoke:imports` and basic manual execution to confirm no errors.
 
 ### Reference — Implemented My Account
-- Endpoint: `/api/v1/users/me`
+- Endpoint: `/v1/users/me`
 - Files:
   - `src/api/models/user.mjs` (User model)
   - `src/api/services/user-service.mjs` (`fetchCurrentUser()`)
   - `src/api/index.mjs` re-exports
-
-
