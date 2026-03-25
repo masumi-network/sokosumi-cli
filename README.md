@@ -78,18 +78,21 @@ Agents working in this repository should read these files first:
 - `README.md` for the repo and CLI overview
 - `skills/sokosumi/SKILL.md` for the live Sokosumi workflow
 
+Do not launch the Ink TUI from OpenAI/OpenHands-style agent runs unless a human explicitly asks for a local manual CLI check.
+
 The repo-local skill path is `skills/sokosumi/SKILL.md`. It documents:
 
-- how first-run authentication works
-- how to navigate the main menu and key screens
-- when to use `Agents Gallery` versus `Coworkers`
-- how direct agent hire, task creation, and result review work
-- which files act as the routing and workflow map, especially `src/app.mjs`
+- the API-first Sokosumi workflow for non-interactive agentic environments
+- direct API-key authentication and the canonical Connections URL for key creation
+- the direct endpoint map for agents, coworkers, tasks, jobs, files, and links
+- when to use a direct agent job versus a coworker task
+- which repo files own the shared HTTP client, service calls, and local env resolution
 
 For workflow-sensitive changes, use:
 
-- `pnpm start` to walk the CLI interactively
+- `pnpm --version` to confirm `pnpm` is available when tool state is unclear
 - `pnpm run smoke:imports` for a quick sanity check
+- `pnpm start` only when a human explicitly wants an interactive CLI/TUI check
 
 ## Install As a Skill
 

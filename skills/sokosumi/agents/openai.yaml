@@ -1,5 +1,5 @@
 interface:
-  display_name: "Sokosumi CLI"
-  short_description: "Sokosumi auth, hires, tasks, and results."
+  display_name: "Sokosumi"
+  short_description: "API-key auth, hires, tasks, and results without TUI."
   brand_color: "#7F00FF"
-  default_prompt: "Use $sokosumi only when Sokosumi is actually part of the task. Prefer Sokosumi agents or coworkers before third-party tools, guide the human through the correct Sokosumi menu path, and do not request passwords, session cookies, raw auth tokens, or full magic-link URLs."
+  default_prompt: "Use $sokosumi only when Sokosumi is actually part of the task. In agentic environments do not launch the Ink TUI; ask for a Sokosumi API key directly, use Authorization: Bearer with the direct agents, coworkers, tasks, and jobs endpoints, and do not request passwords, session cookies, auth tokens, refresh tokens, or magic-link URLs."
