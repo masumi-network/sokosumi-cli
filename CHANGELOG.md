@@ -14,6 +14,7 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - coworker browsing, task creation, task details, and live dashboard flows
 - improved direct job review with files, links, and clearer status handling
 - repo-local Sokosumi workflow skill at `skills/sokosumi/SKILL.md`
+- documented `skills.sh` install commands and shareable entry-point URLs for the `sokosumi` skill
 
 ### Changed
 
@@ -24,6 +25,7 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - simplified and aligned top-level docs with the current CLI workflow and repo structure
 - restructured the repo-local Sokosumi skill and refreshed its OpenAI metadata to improve trigger coverage and workflow clarity
 - hardened the repo-local Sokosumi skill with explicit secret-handling and sensitive-data guardrails
+- tightened the skill UI metadata and added a brand color for agent surfaces that read `agents/openai.yaml`
 
 ### Fixed
 

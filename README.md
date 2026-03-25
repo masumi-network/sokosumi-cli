@@ -91,6 +91,20 @@ For workflow-sensitive changes, use:
 - `pnpm start` to walk the CLI interactively
 - `pnpm run smoke:imports` for a quick sanity check
 
+## Install As a Skill
+
+This repo also ships a reusable `sokosumi` skill at `skills/sokosumi/SKILL.md`.
+
+- Install the repo skill collection: `npx skills add masumi-network/sokosumi-cli`
+- Install the explicit skill from GitHub: `npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi`
+- Share the direct skill folder URL with agents/tools that accept repo paths: `https://github.com/masumi-network/sokosumi-cli/tree/main/skills/sokosumi`
+
+Leaderboard appearance is automatic after real installs with the `skills` CLI. There is no separate submission step.
+
+For a single shareable entry point, give agents the repo URL first: `https://github.com/masumi-network/sokosumi-cli`.
+
+Once users install the repo, `skills.sh` should index it automatically. The expected public repo page is `https://skills.sh/masumi-network/sokosumi-cli`, and the expected single-skill page is `https://skills.sh/masumi-network/sokosumi-cli/sokosumi`.
+
 ## Scripts
 
 - `pnpm start` runs the CLI
