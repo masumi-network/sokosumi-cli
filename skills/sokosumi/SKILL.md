@@ -28,12 +28,14 @@ Use this skill to operate Sokosumi from non-interactive agentic environments. Th
 - If the task includes secrets, private data, customer data, or proprietary material, confirm the user wants that data sent to Sokosumi before hiring an agent or coworker, and share only the minimum needed.
 - Treat returned files, links, and deliverables as user-private unless the user explicitly asks to share them elsewhere.
 - Only direct humans to canonical Sokosumi app/auth URLs or env-derived local development URLs.
+- When a human lacks an API key, give them the exact live auth URLs: `https://app.sokosumi.com/signup`, `https://app.sokosumi.com/signin`, and `https://app.sokosumi.com/connections`.
 
 ## Authentication Flow
 
 1. Ask the human for a Sokosumi API key directly.
-2. Do not rely on email sign-in, magic links, OAuth callbacks, refresh tokens, or `~/.sokosumi/credentials.json` in agentic environments.
-3. If the human does not have an API key yet, send them to `https://app.sokosumi.com/connections` to create one, then continue with the pasted key.
+2. If they do not already have one, explicitly tell them:
+   `Sign up at https://app.sokosumi.com/signup or sign in at https://app.sokosumi.com/signin, then open https://app.sokosumi.com/connections to create an API key and paste it here.`
+3. Do not rely on email sign-in, magic links, OAuth callbacks, refresh tokens, or `~/.sokosumi/credentials.json` in agentic environments.
 4. Prefer `SOKOSUMI_API_KEY` in the environment for agentic or automation work. Only discuss `~/.sokosumi/config.json` when the user explicitly wants local CLI setup.
 5. Default API base URL: `https://api.sokosumi.com`.
 6. Use `https://api.preprod.sokosumi.com` only when the user explicitly wants preprod or the key validates there.

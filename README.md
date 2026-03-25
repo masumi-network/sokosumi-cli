@@ -83,7 +83,7 @@ Do not launch the Ink TUI from OpenAI/OpenHands-style agent runs unless a human 
 The repo-local skill path is `skills/sokosumi/SKILL.md`. It documents:
 
 - the API-first Sokosumi workflow for non-interactive agentic environments
-- direct API-key authentication and the canonical Connections URL for key creation
+- direct API-key authentication plus the live sign-up, sign-in, and Connections URLs for humans who need to create a key
 - the direct endpoint map for agents, coworkers, tasks, jobs, files, and links
 - when to use a direct agent job versus a coworker task
 - which repo files own the shared HTTP client, service calls, and local env resolution
