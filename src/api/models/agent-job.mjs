@@ -18,6 +18,8 @@ export class AgentJob {
     updatedAt,
     name,
     status,
+    jobType,
+    credits,
     agentId,
     userId,
     organizationId,
@@ -26,6 +28,8 @@ export class AgentJob {
     onChainStatus,
     input,
     output,
+    result,
+    resultHash,
     startedAt,
     completedAt,
     resultSubmittedAt,
@@ -39,6 +43,8 @@ export class AgentJob {
     this.updatedAt = updatedAt ? new Date(updatedAt) : null;
     this.name = name ?? null;
     this.status = status ?? null;
+    this.jobType = jobType ?? null;
+    this.credits = Number.isFinite(credits) ? credits : null;
     this.agentId = agentId ?? null;
     this.userId = userId ?? null;
     this.organizationId = organizationId ?? null;
@@ -46,7 +52,9 @@ export class AgentJob {
     this.agentJobStatus = agentJobStatus ?? null;
     this.onChainStatus = onChainStatus ?? null;
     this.input = typeof input === 'string' ? input : (input ? JSON.stringify(input) : null);
-    this.output = typeof output === 'string' ? output : (output ? JSON.stringify(output) : null);
+    this.result = typeof result === 'string' ? result : null;
+    this.resultHash = resultHash ?? null;
+    this.output = typeof output === 'string' ? output : (output ? JSON.stringify(output) : (this.result ?? null));
     this.startedAt = startedAt ? new Date(startedAt) : null;
     this.completedAt = completedAt ? new Date(completedAt) : null;
     this.resultSubmittedAt = resultSubmittedAt ? new Date(resultSubmittedAt) : null;
@@ -62,6 +70,5 @@ export class AgentJob {
     return new AgentJob(input);
   }
 }
-
 
 
