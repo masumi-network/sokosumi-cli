@@ -1,6 +1,10 @@
 import {
+  deriveAuthUrlFromApiUrl,
+  deriveWebUrlFromApiUrl,
   getApiBaseUrlFromEnv,
   getAuthBaseUrlFromEnv,
+  getApiEnvironmentName,
+  getKnownApiBaseUrls,
   getWebBaseUrlFromEnv,
   loadEnvFromLocalFile
 } from '../utils/env.mjs';
@@ -124,4 +128,55 @@ export async function validateApiKey(apiKey) {
   }
 
   return payload;
+}
+
+async function validateApiKeyAgainstBaseUrl(apiKey, apiBaseUrl) {
+  const response = await fetch(buildUrl(apiBaseUrl, '/v1/users/me'), {
+    method: 'GET',
+    headers: {
+      'authorization': `Bearer ${apiKey}`,
+      'content-type': 'application/json',
+    },
+  });
+
+  const payload = await parseJsonSafely(response);
+
+  if (!response.ok) {
+    throw new Error(
+      parseErrorPayload(payload, `Failed to verify API key (${response.status})`)
+    );
+  }
+
+  return payload;
+}
+
+export async function resolveApiKeyEnvironment(apiKey) {
+  ensureEnvLoaded();
+
+  const trimmedApiKey = String(apiKey || '').trim();
+  if (!trimmedApiKey) {
+    throw new Error('Enter a Sokosumi API key');
+  }
+
+  let lastError = null;
+
+  for (const apiBaseUrl of getKnownApiBaseUrls()) {
+    try {
+      const payload = await validateApiKeyAgainstBaseUrl(trimmedApiKey, apiBaseUrl);
+      const webBaseUrl = deriveWebUrlFromApiUrl(apiBaseUrl);
+      const authBaseUrl = deriveAuthUrlFromApiUrl(apiBaseUrl);
+
+      return {
+        apiBaseUrl,
+        webBaseUrl,
+        authBaseUrl,
+        environmentName: getApiEnvironmentName(apiBaseUrl),
+        payload,
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Failed to verify API key');
 }

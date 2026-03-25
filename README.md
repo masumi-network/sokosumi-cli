@@ -30,7 +30,7 @@ Browse available agents, hire multi-agent orchestrators, create complex tasks, a
 - Node.js >= 18
 - Yarn 1 (v1.22+)
 
-The project declares `packageManager: yarn@1.22.22` and a `prepare` script to enable Corepack.
+The project declares `packageManager: yarn@1.22.22`.
 
 ## 🚀 Installation
 
@@ -51,6 +51,17 @@ npx sokosumi-cli
 
 The package already exposes the `sokosumi` binary. Once published to npm, other users and agent runtimes can install it globally or run it on demand with `npx`.
 
+### Agent Skill
+
+This repo now includes a reusable agent skill at `skills/sokosumi/SKILL.md`.
+
+It captures the live CLI workflow for:
+- authentication and API key setup
+- agent hiring and coworker task creation
+- job and task result review
+
+If you change navigation, auth copy, or storage behavior, update the skill in the same PR so other agents stay aligned.
+
 ### Optional Environment Setup
 ```bash
 cp .env.example .env
@@ -63,12 +74,14 @@ If you skip `.env`, the CLI will still work. It defaults to the production API a
 You can authenticate in either of these ways:
 
 ```bash
-# API Configuration
-SOKOSUMI_API_URL=https://api.sokosumi.com
+# Optional API override
+# Leave this unset for normal CLI usage.
+# The CLI prefers production first and falls back to preprod when a user pastes an API key.
+# SOKOSUMI_API_URL=https://api.sokosumi.com
 
 # Optional browser auth overrides
-# SOKOSUMI_WEB_URL=https://sokosumi.com
-# SOKOSUMI_AUTH_URL=https://sokosumi.com/api/auth
+# SOKOSUMI_WEB_URL=https://app.sokosumi.com
+# SOKOSUMI_AUTH_URL=https://app.sokosumi.com/api/auth
 
 # Option 1: API key (optional if you use interactive setup)
 # SOKOSUMI_API_KEY=<your-sokosumi-api-key>
@@ -83,6 +96,8 @@ ANTHROPIC_API_KEY=<your-anthropic-api-key>
 On first run, the CLI now offers:
 - `Email me a sign-in link`: sends a browser sign-in email and lands you on Sokosumi Connections so you can create an API key.
 - `Paste an API key`: verifies the key immediately before saving it.
+
+When a user pastes an API key, the CLI tries `production` first and then `preprod`, stores the matching API URL automatically, and switches the browser/auth URLs to match. The production browser target is `app.sokosumi.com`, not the marketing site root. Users do not need to pick the environment manually.
 
 Saved interactive configuration lives in:
 - `~/.sokosumi/config.json` for API key and CLI config
@@ -244,7 +259,7 @@ All features are powered by the Sokosumi API. The CLI automatically handles:
 | Command | Description |
 |---------|-------------|
 | `yarn start` | Run the CLI |
-| `yarn prepare` | Enable Corepack on install |
+| `npm run smoke:imports` | Import-check core views and auth flows |
 
 ## 🏗️ Architecture
 

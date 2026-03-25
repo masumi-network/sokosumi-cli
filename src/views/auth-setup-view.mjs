@@ -5,7 +5,12 @@ import SelectInput from '../components/select-input.mjs';
 import TextInput from '../components/text-input.mjs';
 import {getCliConfigPath, writeApiKeyToEnv} from '../utils/env.mjs';
 import {getAuthManager} from '../auth/auth-manager.mjs';
-import {getConnectionsUrl, getOAuthClientsUrl, requestMagicLinkSignIn, validateApiKey} from '../auth/magic-link.mjs';
+import {
+  getConnectionsUrl,
+  getOAuthClientsUrl,
+  requestMagicLinkSignIn,
+  resolveApiKeyEnvironment
+} from '../auth/magic-link.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
@@ -71,8 +76,12 @@ export default function AuthSetupView({onDone, onBack}) {
     setError(null);
 
     try {
-      await validateApiKey(nextApiKey);
-      await writeApiKeyToEnv(nextApiKey);
+      const resolvedEnvironment = await resolveApiKeyEnvironment(nextApiKey);
+      await writeApiKeyToEnv(nextApiKey, {
+        apiUrl: resolvedEnvironment.apiBaseUrl,
+        webUrl: resolvedEnvironment.webBaseUrl,
+        authUrl: resolvedEnvironment.authBaseUrl,
+      });
       getAuthManager().logout();
       onDone && onDone(nextApiKey);
     } catch (submitError) {
@@ -144,10 +153,11 @@ export default function AuthSetupView({onDone, onBack}) {
         React.createElement(AuthStepTitle, null, 'Paste Sokosumi API Key'),
         notice && React.createElement(Text, {color: 'green'}, notice),
         React.createElement(Text, null, 'Paste an existing key, or create one in the browser and come back here.'),
+        React.createElement(Text, {dimColor: true}, 'The CLI detects preprod or production automatically from the API key.'),
         React.createElement(Box, {marginTop: 1},
           React.createElement(Text, {color: BRAND_HEX}, '› '),
           busy
-            ? React.createElement(Text, null, 'verifying API key...')
+            ? React.createElement(Text, null, 'detecting environment and verifying API key...')
             : React.createElement(TextInput, {
                 value: apiKey,
                 onChange: setApiKey,

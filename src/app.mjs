@@ -41,7 +41,7 @@ function MainMenu() {
   const [taskReturnMode, setTaskReturnMode] = useState('dashboard');
 
   const items = useMemo(() => ([
-    {label: '📊 Dashboard (Live Tasks)', value: 'dashboard'},
+    {label: 'Dashboard (Live Tasks)', value: 'dashboard'},
     {label: 'My Tasks', value: 'tasks'},
     {label: 'My Account', value: 'account'},
     {label: 'Agents Gallery', value: 'agents'},

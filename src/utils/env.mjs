@@ -12,6 +12,8 @@ const URL_NAME = 'SOKOSUMI_API_URL';
 const WEB_URL_NAME = 'SOKOSUMI_WEB_URL';
 const AUTH_URL_NAME = 'SOKOSUMI_AUTH_URL';
 const DEFAULT_API_URL = 'https://api.sokosumi.com';
+const PREPROD_API_URL = 'https://api.preprod.sokosumi.com';
+const KNOWN_API_URLS = [DEFAULT_API_URL, PREPROD_API_URL];
 
 function ensureSokosumiDir() {
   if (!fs.existsSync(SOKOSUMI_DIR)) {
@@ -33,6 +35,13 @@ function readCliConfig() {
   }
 }
 
+function setProcessEnvValue(name, value) {
+  if (typeof value !== 'string') return;
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return;
+  process.env[name] = trimmedValue;
+}
+
 async function writeCliConfig(nextValues) {
   ensureSokosumiDir();
   const current = readCliConfig();
@@ -47,28 +56,28 @@ async function writeCliConfig(nextValues) {
   });
 }
 
-function hydrateProcessEnvFromConfig() {
+function hydrateProcessEnvFromConfig({preserveExisting = {}} = {}) {
   const config = readCliConfig();
 
-  if (!process.env[KEY_NAME] && typeof config.apiKey === 'string' && config.apiKey.trim()) {
-    process.env[KEY_NAME] = config.apiKey.trim();
+  if (!preserveExisting.apiKey) {
+    setProcessEnvValue(KEY_NAME, config.apiKey);
   }
 
-  if (!process.env[URL_NAME] && typeof config.apiUrl === 'string' && config.apiUrl.trim()) {
-    process.env[URL_NAME] = config.apiUrl.trim();
+  if (!preserveExisting.apiUrl) {
+    setProcessEnvValue(URL_NAME, config.apiUrl);
   }
 
-  if (!process.env[WEB_URL_NAME] && typeof config.webUrl === 'string' && config.webUrl.trim()) {
-    process.env[WEB_URL_NAME] = config.webUrl.trim();
+  if (!preserveExisting.webUrl) {
+    setProcessEnvValue(WEB_URL_NAME, config.webUrl);
   }
 
-  if (!process.env[AUTH_URL_NAME] && typeof config.authUrl === 'string' && config.authUrl.trim()) {
-    process.env[AUTH_URL_NAME] = config.authUrl.trim();
+  if (!preserveExisting.authUrl) {
+    setProcessEnvValue(AUTH_URL_NAME, config.authUrl);
   }
 }
 
-function deriveWebUrlFromApiUrl(apiUrl) {
-  const fallback = 'https://sokosumi.com';
+export function deriveWebUrlFromApiUrl(apiUrl) {
+  const fallback = 'https://app.sokosumi.com';
 
   try {
     const parsed = new URL(apiUrl || DEFAULT_API_URL);
@@ -78,16 +87,27 @@ function deriveWebUrlFromApiUrl(apiUrl) {
     }
 
     const next = new URL(parsed.origin);
-    next.hostname = next.hostname.replace(/^api\./, '');
+    next.hostname = next.hostname.replace(/^api\./, 'app.');
     return next.toString().replace(/\/+$/g, '');
   } catch {
     return fallback;
   }
 }
 
+export function deriveAuthUrlFromApiUrl(apiUrl) {
+  return `${deriveWebUrlFromApiUrl(apiUrl)}/api/auth`;
+}
+
 export function loadEnvFromLocalFile() {
+  const preserveExisting = {
+    apiKey: Boolean(process.env[KEY_NAME]),
+    apiUrl: Boolean(process.env[URL_NAME]),
+    webUrl: Boolean(process.env[WEB_URL_NAME]),
+    authUrl: Boolean(process.env[AUTH_URL_NAME]),
+  };
+
   dotenv.config({path: ENV_FILE});
-  hydrateProcessEnvFromConfig();
+  hydrateProcessEnvFromConfig({preserveExisting});
 
   if (!process.env[URL_NAME]) {
     process.env[URL_NAME] = DEFAULT_API_URL;
@@ -118,13 +138,42 @@ export function getAuthBaseUrlFromEnv() {
   return process.env[AUTH_URL_NAME] || readCliConfig().authUrl || `${getWebBaseUrlFromEnv()}/api/auth`;
 }
 
-export async function writeApiKeyToEnv(apiKey) {
+export function getKnownApiBaseUrls() {
+  return [...KNOWN_API_URLS];
+}
+
+export function getApiEnvironmentName(apiUrl) {
+  return String(apiUrl || '').includes('.preprod.')
+    ? 'preprod'
+    : 'production';
+}
+
+export async function writeApiKeyToEnv(apiKey, {apiUrl, webUrl, authUrl} = {}) {
   const trimmedApiKey = String(apiKey || '').trim();
-  await writeCliConfig({apiKey: trimmedApiKey});
-  process.env[KEY_NAME] = trimmedApiKey;
+  const resolvedApiUrl = String(apiUrl || getApiBaseUrlFromEnv() || DEFAULT_API_URL).trim();
+  const resolvedWebUrl = String(webUrl || deriveWebUrlFromApiUrl(resolvedApiUrl)).trim();
+  const resolvedAuthUrl = String(authUrl || deriveAuthUrlFromApiUrl(resolvedApiUrl)).trim();
+
+  await writeCliConfig({
+    apiKey: trimmedApiKey,
+    apiUrl: resolvedApiUrl,
+    webUrl: resolvedWebUrl,
+    authUrl: resolvedAuthUrl,
+  });
+
+  setProcessEnvValue(KEY_NAME, trimmedApiKey);
+  setProcessEnvValue(URL_NAME, resolvedApiUrl);
+  setProcessEnvValue(WEB_URL_NAME, resolvedWebUrl);
+  setProcessEnvValue(AUTH_URL_NAME, resolvedAuthUrl);
+
+  return {
+    apiKey: trimmedApiKey,
+    apiUrl: resolvedApiUrl,
+    webUrl: resolvedWebUrl,
+    authUrl: resolvedAuthUrl,
+  };
 }
 
 export function getCliConfigPath() {
   return CONFIG_FILE;
 }
-
