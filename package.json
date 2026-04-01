@@ -16,7 +16,7 @@
   },
   "scripts": {
     "start": "node bin/sokosumi.mjs",
-    "smoke:imports": "node --input-type=module -e \"await import('./src/app.mjs'); await import('./src/components/select-input.mjs'); await import('./src/views/agents-view.mjs'); await import('./src/views/coworkers-view.mjs'); await import('./src/views/auth-setup-view.mjs'); await import('./src/auth/magic-link.mjs'); console.log('imports-ok')\""
+    "smoke:imports": "node --input-type=module -e \"await import('./src/app.mjs'); await import('./src/cli/index.mjs'); await import('./src/components/select-input.mjs'); await import('./src/views/agents-view.mjs'); await import('./src/views/coworkers-view.mjs'); await import('./src/views/auth-setup-view.mjs'); await import('./src/auth/magic-link.mjs'); console.log('imports-ok')\""
   },
   "engines": {
     "node": ">=18.0.0"
