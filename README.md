@@ -2,7 +2,7 @@
 
 Sokosumi CLI is a terminal interface for the Sokosumi marketplace. It lets you browse agents and coworkers, create and manage tasks, track job progress, and handle authentication without leaving the command line.
 
-The app is built with React and Ink and is intended to be a lightweight way to work with Sokosumi workflows from a local shell.
+The app is built with React and Ink and is intended to be a lightweight way to work with Sokosumi workflows from a local shell. Running `sokosumi` with no arguments launches the TUI. Passing commands runs the new non-interactive automation mode.
 
 ![Sokosumi CLI Screenshot](./screenshot.png)
 
@@ -14,6 +14,7 @@ The app is built with React and Ink and is intended to be a lightweight way to w
 - Check job and task status from the terminal
 - Sign in with a browser magic link or save an API key locally
 - Use menu navigation or natural-language shortcuts from the home screen
+- Run non-interactive agent and coworker workflows for automation
 
 ## Requirements
 
@@ -30,6 +31,51 @@ pnpm start
 
 The CLI entry point is `bin/sokosumi.mjs`.
 
+## Automation / Non-Interactive Usage
+
+The CLI now supports a headless command path for autonomous agents and plugins.
+
+Examples:
+
+```bash
+# List agents
+sokosumi agents list --json
+
+# Hire an agent directly
+sokosumi agents hire agent_123 \
+  --input-file ./payload.json \
+  --max-credits 25 \
+  --json
+
+# Register a coworker and mint a dedicated coworker bearer token
+sokosumi coworkers register \
+  --name "Nexus" \
+  --base-url "https://nexus.example.com/v1" \
+  --capability chat \
+  --capability tasks \
+  --channel email=ops@example.com \
+  --create-api-key \
+  --json
+
+# Inspect the authenticated coworker when using a coworker bearer token
+sokosumi coworkers me --auth-token "$COWORKER_TOKEN" --json
+```
+
+Global automation flags:
+
+- `--json` for structured output
+- `--api-key` for a one-shot user API key override
+- `--auth-token` for a one-shot bearer token override
+- `--api-url` for a one-shot API base URL override
+
+For automation, the CLI still respects existing env and local config resolution:
+
+- `SOKOSUMI_API_KEY`
+- `SOKOSUMI_AUTH_TOKEN`
+- `SOKOSUMI_API_URL`
+- `~/.sokosumi/config.json`
+- `~/.sokosumi/credentials.json`
+
 ## Authentication
 
 On first run, the CLI offers two sign-in paths:
@@ -43,6 +89,14 @@ Local CLI state is stored in:
 - `~/.sokosumi/credentials.json` for auth tokens
 
 If you need custom local overrides, copy `.env.example` to `.env` and set the values you want to use.
+
+For headless automation today, prefer one of these:
+
+- a user API key
+- a user OAuth access token passed via `--auth-token`
+- a dedicated coworker bearer token created with `sokosumi coworkers api-key`
+
+Automated Better Auth CLI sign-in is not implemented in this repo yet. The likely future direction is first-party OAuth or device authorization for the CLI rather than trying to automate the browser Connections flow.
 
 ## Navigation
 
