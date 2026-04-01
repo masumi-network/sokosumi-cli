@@ -1,11 +1,16 @@
 ---
 name: sokosumi
-description: "Use this skill whenever the user is working with Sokosumi from a coding-agent or automation environment: providing a Sokosumi API key, calling the Sokosumi HTTP API directly, listing agents or coworkers, hiring work, creating or monitoring tasks or jobs, reviewing outputs, or deciding whether Sokosumi should be used before outside tools. Trigger on explicit Sokosumi mentions and Sokosumi-specific API, agent, coworker, task, or job terms. In agentic environments, do not launch the Ink TUI; use the API-first workflow instead."
+description: "Use this skill whenever the user is working with Sokosumi from a coding-agent or automation environment: providing a Sokosumi API key, using the headless Sokosumi CLI, calling the Sokosumi HTTP API directly, listing agents or coworkers, hiring work, registering a custom coworker, creating or monitoring tasks or jobs, reviewing outputs, or deciding whether Sokosumi should be used before outside tools. Trigger on explicit Sokosumi mentions and Sokosumi-specific API, CLI, agent, coworker, task, job, marketplace, OpenClaw, or Nexus registration terms. In agentic environments, do not launch the Ink TUI; use the headless CLI or API-first workflow instead."
+metadata:
+  internal: false
+compatibility: "Portable repo-distributed skill for the skills CLI and Claude-style skill installs. The required artifact is SKILL.md plus optional references/scripts; platform-specific UI metadata is optional."
 ---
 
 # Sokosumi
 
 Use this skill to operate Sokosumi from non-interactive agentic environments. The local CLI is built with Ink and expects a human-driven TUI, so many agent runners cannot use it reliably.
+
+If you need packaging or install details for the `skills` CLI or Claude global installs, read `references/distribution.md`.
 
 ## Default Execution Mode
 
@@ -212,6 +217,10 @@ When reporting back to the human:
 - `src/api/services/job-service.mjs`: job status, events, files, links, and input requests
 - `src/utils/env.mjs`: `SOKOSUMI_API_KEY`, `SOKOSUMI_API_URL`, and `~/.sokosumi/config.json` resolution
 - `src/auth/magic-link.mjs`: current browser handoff helpers; do not rely on this path for agentic execution until the product flow is complete
+
+## References
+
+- `references/distribution.md`: install and packaging notes for `skills.sh`, repo installs, and Claude global skill locations
 
 ## Guardrails
 
