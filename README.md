@@ -154,9 +154,13 @@ This repo also ships a reusable `sokosumi` skill at `skills/sokosumi/SKILL.md`.
 
 - Install the repo skill collection: `npx skills add masumi-network/sokosumi-cli`
 - Install the explicit skill from GitHub: `npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi`
+- Install only the Sokosumi skill from the repo shorthand: `npx skills add masumi-network/sokosumi-cli --skill sokosumi`
+- Search first from the local registry/index if needed: `npx skills find sokosumi`
 - Share the direct skill folder URL with agents/tools that accept repo paths: `https://github.com/masumi-network/sokosumi-cli/tree/main/skills/sokosumi`
 
 Leaderboard appearance is automatic after real installs with the `skills` CLI. There is no separate submission step.
+
+In practice, Claude-style installs land under `~/.claude/skills/<skill-name>/` and rely on `SKILL.md` plus optional references. The repo keeps `skills/sokosumi/SKILL.md` as the portable source of truth for `skills.sh` and Claude installs.
 
 For a single shareable entry point, give agents the repo URL first: `https://github.com/masumi-network/sokosumi-cli`.
 
