@@ -11,6 +11,7 @@ Use this skill to operate Sokosumi from non-interactive agentic environments. Th
 
 - Read `README.md` and this skill file before changing workflow-sensitive files.
 - Assume API-first, non-interactive execution by default.
+- If the local `sokosumi` CLI is available, prefer its headless command surface for automation before falling back to raw `curl`.
 - Do not run `pnpm start` or attempt to navigate the Ink TUI unless the user explicitly asks for a local manual CLI check.
 - Do not tell another agent to open menus or use keyboard shortcuts such as `H`, `T`, or `Esc`.
 - Use `pnpm` for repo-local workflows. Check availability with `pnpm --version` if it is unclear.
@@ -41,6 +42,13 @@ Use this skill to operate Sokosumi from non-interactive agentic environments. Th
 6. Use `https://api.preprod.sokosumi.com` only when the user explicitly wants preprod or the key validates there.
 7. Send auth as `Authorization: Bearer <API_KEY>`.
 
+When the local CLI is available, these flags are preferred for one-shot automation:
+
+- `--api-key`
+- `--auth-token`
+- `--api-url`
+- `--json`
+
 Quick auth check:
 
 ```bash
@@ -48,6 +56,26 @@ curl -sS https://api.sokosumi.com/v1/users/me \
   -H "Authorization: Bearer $SOKOSUMI_API_KEY" \
   -H "Content-Type: application/json"
 ```
+
+## Headless CLI Shortcuts
+
+Use the local CLI for automation-friendly execution when it is present:
+
+```bash
+sokosumi agents list --json
+sokosumi agents hire agent_123 --input-file ./payload.json --max-credits 25 --json
+sokosumi coworkers list --json
+sokosumi coworkers register --name "Nexus" --base-url "https://nexus.example.com/v1" --capability chat --capability tasks --create-api-key --json
+sokosumi coworkers api-key cow_123 --name "Production key" --json
+sokosumi coworkers me --auth-token "$COWORKER_TOKEN" --json
+sokosumi jobs get job_123 --json
+```
+
+Use raw HTTP only when:
+
+- the user explicitly asks for raw API calls
+- the local CLI is unavailable
+- the required endpoint is not exposed by the CLI yet
 
 ## Choose The Execution Path
 
@@ -190,6 +218,7 @@ When reporting back to the human:
 - Do not launch the Ink TUI from agentic environments unless the user explicitly asks for interactive CLI testing.
 - Do not ask for passwords, cookies, full magic-link URLs, auth tokens, or refresh tokens.
 - Prefer environment variables over persistent local writes for automation.
+- Do not promise automated Better Auth browser sign-in for the CLI unless the repo has an explicit first-class flow for it. Today, prefer user API keys, OAuth access tokens, or dedicated coworker bearer tokens.
 - Keep storage references accurate when local CLI setup is actually in scope:
   - `~/.sokosumi/config.json` for API key and CLI config
   - `~/.sokosumi/credentials.json` for auth tokens
