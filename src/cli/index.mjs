@@ -20,7 +20,7 @@ Usage:
   sokosumi agents list [--search QUERY] [--limit N] [--json]
   sokosumi agents hire <agent-id> (--input-json JSON | --input-file PATH) [--name JOB_NAME] [--max-credits N] [--json]
   sokosumi coworkers list [--search QUERY] [--limit N] [--scope whitelisted|all|archived] [--capability chat|tasks] [--json]
-  sokosumi coworkers register --name NAME --email EMAIL [--caption TEXT] [--company NAME] [--company-logo URL] [--url URL] [--base-url URL] [--description TEXT] [--image URL] [--capability chat|tasks] [--create-api-key] [--api-key-name NAME] [--api-key-expires-at ISO] [--json]
+  sokosumi coworkers register --name NAME [--caption TEXT] [--company NAME] [--company-logo URL] [--url URL] [--base-url URL] [--description TEXT] [--image URL] [--priority N] [--capability chat|tasks] [--channel PROVIDER=VALUE] [--metadata-json JSON | --metadata-file PATH] [--create-api-key] [--api-key-name NAME] [--api-key-expires-at ISO] [--json]
   sokosumi coworkers api-key <coworker-id> [--name KEY_NAME] [--expires-at ISO] [--json]
   sokosumi coworkers me [--json]
   sokosumi jobs list [--limit N] [--json]
@@ -46,6 +46,15 @@ function parsePositiveInteger(value, {label} = {}) {
   const parsed = Number.parseInt(String(value), 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${label || 'value'} must be a positive integer`);
+  }
+  return parsed;
+}
+
+function parseInteger(value, {label} = {}) {
+  if (value === undefined) return undefined;
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${label || 'value'} must be an integer`);
   }
   return parsed;
 }
@@ -82,6 +91,29 @@ function applyListFilters(items, {search, limit, fields}) {
   return filtered;
 }
 
+function parseChannels(input) {
+  const entries = {};
+
+  for (const item of asArray(input)) {
+    const text = String(item);
+    const separator = text.indexOf('=');
+    if (separator <= 0 || separator === text.length - 1) {
+      throw new Error(`Invalid --channel value "${text}". Use provider=value.`);
+    }
+
+    const provider = text.slice(0, separator).trim();
+    const value = text.slice(separator + 1).trim();
+
+    if (!provider || !value) {
+      throw new Error(`Invalid --channel value "${text}". Use provider=value.`);
+    }
+
+    entries[provider] = value;
+  }
+
+  return entries;
+}
+
 async function readJsonObject({jsonText, filePath, label}) {
   if (jsonText && filePath) {
     throw new Error(`Pass either ${label}-json or ${label}-file, not both`);
@@ -107,6 +139,14 @@ async function readJsonObject({jsonText, filePath, label}) {
   }
 
   return parsed;
+}
+
+async function readOptionalJsonObject({jsonText, filePath, label}) {
+  if (!jsonText && !filePath) {
+    return undefined;
+  }
+
+  return readJsonObject({jsonText, filePath, label});
 }
 
 function applyRuntimeOverrides(args) {
@@ -185,6 +225,12 @@ function printCoworkerList(stdout, coworkers) {
     lines.push(`  capabilities: ${capabilities}`);
     if (coworker.company) lines.push(`  company: ${coworker.company}`);
     if (coworker.baseURL) lines.push(`  baseURL: ${coworker.baseURL}`);
+    if (coworker.metadata?.channels && Object.keys(coworker.metadata.channels).length > 0) {
+      const channels = Object.entries(coworker.metadata.channels)
+        .map(([provider, value]) => `${provider}=${value}`)
+        .join(', ');
+      lines.push(`  channels: ${channels}`);
+    }
     if (coworker.description) lines.push(`  description: ${truncate(coworker.description, 140)}`);
   }
 
@@ -224,10 +270,18 @@ function printCoworkerRegistration(stdout, coworker, apiKey) {
     `Created coworker ${coworker.name || coworker.id} [${coworker.id}]`,
     coworker.slug ? `slug: ${coworker.slug}` : '',
     coworker.baseURL ? `baseURL: ${coworker.baseURL}` : '',
+    Number.isInteger(coworker.priority) ? `priority: ${coworker.priority}` : '',
     Array.isArray(coworker.capabilities) && coworker.capabilities.length > 0
       ? `capabilities: ${coworker.capabilities.join(', ')}`
       : ''
   ];
+
+  if (coworker.metadata?.channels && Object.keys(coworker.metadata.channels).length > 0) {
+    const channels = Object.entries(coworker.metadata.channels)
+      .map(([provider, value]) => `${provider}=${value}`)
+      .join(', ');
+    lines.push(`channels: ${channels}`);
+  }
 
   if (apiKey?.token) {
     lines.push(`coworker api key: ${apiKey.token}`);
@@ -247,10 +301,37 @@ function printCoworkerApiKey(stdout, coworkerId, apiKey) {
   ]);
 }
 
-function buildCoworkerCreatePayload(args) {
+async function buildCoworkerCreatePayload(args) {
+  const metadata = await readOptionalJsonObject({
+    jsonText: getOption(args, 'metadata-json'),
+    filePath: getOption(args, 'metadata-file'),
+    label: 'metadata'
+  });
+  const channels = parseChannels(getOption(args, 'channel'));
+  const mergedMetadata = (() => {
+    const base = metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+      ? metadata
+      : undefined;
+    const existingChannels = base?.channels && typeof base.channels === 'object' && !Array.isArray(base.channels)
+      ? base.channels
+      : undefined;
+    const nextChannels = {
+      ...(existingChannels || {}),
+      ...channels
+    };
+
+    if (base || Object.keys(nextChannels).length > 0) {
+      return {
+        ...(base || {}),
+        ...(Object.keys(nextChannels).length > 0 ? {channels: nextChannels} : {})
+      };
+    }
+
+    return undefined;
+  })();
+
   return {
     name: getOption(args, 'name'),
-    email: getOption(args, 'email'),
     caption: getOption(args, 'caption'),
     company: getOption(args, 'company'),
     companyLogo: getOption(args, 'company-logo'),
@@ -258,7 +339,9 @@ function buildCoworkerCreatePayload(args) {
     baseURL: getOption(args, 'base-url'),
     description: getOption(args, 'description'),
     image: getOption(args, 'image'),
-    capabilities: normalizeCapabilities(getOption(args, 'capability', 'capabilities'))
+    priority: parseInteger(getOption(args, 'priority'), {label: '--priority'}),
+    capabilities: normalizeCapabilities(getOption(args, 'capability', 'capabilities')),
+    metadata: mergedMetadata
   };
 }
 
@@ -353,7 +436,7 @@ async function handleCoworkersCommand(args, io) {
   }
 
   if (subcommand === 'register') {
-    const payload = buildCoworkerCreatePayload(args);
+    const payload = await buildCoworkerCreatePayload(args);
     const shouldCreateApiKey = Boolean(getOption(args, 'create-api-key', 'with-api-key'));
     const {coworker} = await createCoworker(payload);
 
@@ -400,10 +483,12 @@ async function handleCoworkersCommand(args, io) {
     } else {
       writeText(io.stdout, [
         `${coworker.name || 'Unnamed Coworker'} [${coworker.id}]`,
-        coworker.email ? `email: ${coworker.email}` : '',
         coworker.baseURL ? `baseURL: ${coworker.baseURL}` : '',
         Array.isArray(coworker.capabilities) && coworker.capabilities.length > 0
           ? `capabilities: ${coworker.capabilities.join(', ')}`
+          : '',
+        coworker.metadata?.channels && Object.keys(coworker.metadata.channels).length > 0
+          ? `channels: ${Object.entries(coworker.metadata.channels).map(([provider, value]) => `${provider}=${value}`).join(', ')}`
           : ''
       ]);
     }
