@@ -10,6 +10,7 @@ import {
   fetchJob,
   fetchJobs
 } from '../api/index.mjs';
+import {getAgentDescriptionSummary} from '../utils/agent-description.mjs';
 import {loadEnvFromLocalFile} from '../utils/env.mjs';
 import {asArray, getOption, parseArgs} from './args.mjs';
 
@@ -201,10 +202,11 @@ function printAgentList(stdout, agents) {
   for (const agent of agents) {
     const tags = (agent.tags || []).map(tag => tag.name).filter(Boolean).join(', ');
     const price = agent?.price?.credits != null ? `${agent.price.credits} credits` : 'price n/a';
+    const description = getAgentDescriptionSummary(agent.description, {maxLength: 220});
     lines.push(`${agent.name || 'Unnamed Agent'} [${agent.id}]`);
     lines.push(`  status: ${agent.status || 'unknown'} | ${price}`);
     if (tags) lines.push(`  tags: ${tags}`);
-    if (agent.description) lines.push(`  description: ${truncate(agent.description, 140)}`);
+    if (description) lines.push(`  description: ${description}`);
   }
 
   writeText(stdout, lines);
