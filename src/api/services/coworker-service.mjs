@@ -1,16 +1,9 @@
 import {httpGet, httpPatch, httpPost} from '../http-client.mjs';
 import {ApiResponse} from '../models/api-response.mjs';
 import {Coworker, CoworkerApiKey} from '../models/coworker.mjs';
+import {normalizeCapabilities} from '../../utils/normalize.mjs';
 
 const COWORKERS_PATH = '/v1/coworkers';
-
-function normalizeCapabilities(value) {
-  const values = Array.isArray(value) ? value : (value == null ? [] : [value]);
-  return values
-    .flatMap(item => String(item).split(','))
-    .map(item => item.trim())
-    .filter(Boolean);
-}
 
 function buildCoworkersPath({scope, capability, capabilities} = {}) {
   const params = new URLSearchParams();
@@ -76,7 +69,6 @@ export async function fetchCurrentCoworker({signal} = {}) {
  * Creates a coworker
  * @param {Object} data
  * @param {string} data.name
- * @param {string} data.email
  * @param {string|null} [data.caption]
  * @param {string|null} [data.company]
  * @param {string|null} [data.companyLogo]
