@@ -1,6 +1,6 @@
 {
   "name": "sokosumi-cli",
-  "version": "0.1.0",
+  "version": "2.1.0",
   "description": "CLI for Sokosumi agents, coworkers, and automation workflows",
   "type": "module",
   "license": "MIT",
