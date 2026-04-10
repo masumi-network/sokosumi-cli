@@ -13,7 +13,7 @@ import {
   updateCoworker
 } from '../api/index.mjs';
 
-import {loadEnvFromLocalFile} from '../utils/env.mjs';
+import {loadEnvFromLocalFile, DEFAULT_API_URL, PREPROD_API_URL} from '../utils/env.mjs';
 import {normalizeCapabilities} from '../utils/normalize.mjs';
 import {asArray, getOption, parseArgs} from './args.mjs';
 
@@ -22,10 +22,11 @@ const {version: CLI_VERSION} = require('../../package.json');
 
 const VALID_CAPABILITIES = ['chat', 'tasks'];
 
-const HELP_TEXT = `Sokosumi CLI
+const HELP_TEXT = `Sokosumi CLI v${CLI_VERSION}
 
 Usage:
   sokosumi
+  sokosumi discover [--json]
   sokosumi agents list [--search QUERY] [--limit N] [--json]
   sokosumi agents hire <agent-id> (--input-json JSON | --input-file PATH) [--name JOB_NAME] [--max-credits N] [--json]
   sokosumi coworkers list [--search QUERY] [--limit N] [--scope whitelisted|all|archived] [--capability chat|tasks] [--json]
@@ -39,10 +40,15 @@ Usage:
 Global options:
   --api-key KEY
   --auth-token TOKEN
-  --api-url URL
+  --api-url URL         override API base URL (default: https://api.sokosumi.com)
+  --preprod             use preprod environment (https://api.preprod.sokosumi.com)
   --json
   -h, --help
   -v, --version
+
+Environments:
+  mainnet (default)  https://api.sokosumi.com
+  preprod (testing)  https://api.preprod.sokosumi.com
 `;
 
 function validateCapabilities(capabilities) {
@@ -61,6 +67,8 @@ function truncate(value, max = 100) {
   return `${text.slice(0, max - 1)}…`;
 }
 
+// parsePositiveInteger: for --limit, --max-credits (must be > 0)
+// parseInteger: for --priority (allows negative/zero values)
 function parsePositiveInteger(value, {label} = {}) {
   if (value === undefined) return undefined;
   const parsed = Number.parseInt(String(value), 10);
@@ -168,9 +176,13 @@ function applyRuntimeOverrides(args) {
   const apiUrl = getOption(args, 'api-url');
   const apiKey = getOption(args, 'api-key');
   const authToken = getOption(args, 'auth-token');
+  const preprod = args.preprod === true || args.preprod === 'true';
 
+  // --api-url takes highest priority, then --preprod, then env/config
   if (typeof apiUrl === 'string' && apiUrl.trim()) {
     process.env.SOKOSUMI_API_URL = apiUrl.trim();
+  } else if (preprod) {
+    process.env.SOKOSUMI_API_URL = PREPROD_API_URL;
   }
 
   if (typeof apiKey === 'string' && apiKey.trim()) {
@@ -363,13 +375,99 @@ async function buildCoworkerCreatePayload(args) {
   };
 }
 
-async function handleAgentsCommand(args, io) {
+async function handleDiscoverCommand(args, io, {signal} = {}) {
+  const jsonOutput = isJsonOutput(args);
+
+  const results = await Promise.allSettled([
+    fetchAgents({signal}),
+    fetchCoworkers({signal}),
+    fetchJobs({signal})
+  ]);
+
+  const agents = results[0].status === 'fulfilled' ? results[0].value.agents : [];
+  const coworkers = results[1].status === 'fulfilled' ? results[1].value.coworkers : [];
+  const jobs = results[2].status === 'fulfilled' ? results[2].value.jobs : [];
+
+  const errors = [];
+  if (results[0].status === 'rejected') errors.push({resource: 'agents', message: results[0].reason?.message || 'fetch failed'});
+  if (results[1].status === 'rejected') errors.push({resource: 'coworkers', message: results[1].reason?.message || 'fetch failed'});
+  if (results[2].status === 'rejected') errors.push({resource: 'jobs', message: results[2].reason?.message || 'fetch failed'});
+
+  const resolvedApiUrl = process.env.SOKOSUMI_API_URL || DEFAULT_API_URL;
+  const environment = resolvedApiUrl.includes('preprod') ? 'preprod' : 'mainnet';
+
+  const discover = {
+    version: CLI_VERSION,
+    apiUrl: resolvedApiUrl,
+    environment,
+    capabilities: VALID_CAPABILITIES,
+    commands: [
+      'agents list', 'agents hire',
+      'coworkers list', 'coworkers register', 'coworkers update', 'coworkers api-key', 'coworkers me',
+      'jobs list', 'jobs get'
+    ],
+    agents: agents.map(a => ({
+      id: a.id,
+      name: a.name,
+      status: a.status,
+      tags: (a.tags || []).map(t => t.name).filter(Boolean),
+      price: a.price?.credits != null ? {credits: a.price.credits} : null
+    })),
+    coworkers: coworkers.map(c => ({
+      id: c.id,
+      name: c.name,
+      company: c.company,
+      capabilities: c.capabilities,
+      baseURL: c.baseURL
+    })),
+    jobs: jobs.map(j => ({
+      id: j.id,
+      name: j.name,
+      status: j.status,
+      agentId: j.agentId
+    })),
+    errors: errors.length > 0 ? errors : undefined
+  };
+
+  if (jsonOutput) {
+    writeJson(io.stdout, discover);
+  } else {
+    const lines = [
+      `Sokosumi CLI v${CLI_VERSION}`,
+      `API: ${discover.apiUrl} [${discover.environment}]`,
+      '',
+      `Agents (${agents.length}):`,
+      ...agents.map(a => `  ${a.name || 'Unnamed'} [${a.id}] — ${a.status || 'unknown'}`),
+      '',
+      `Coworkers (${coworkers.length}):`,
+      ...coworkers.map(c => `  ${c.name || 'Unnamed'} [${c.id}] — ${(c.capabilities || []).join(', ') || 'none'}`),
+      '',
+      `Jobs (${jobs.length}):`,
+      ...jobs.map(j => `  ${j.name || j.id} [${j.id}] — ${j.status || 'unknown'}`),
+      '',
+      'Commands: agents list, agents hire, coworkers list, coworkers register, coworkers update, coworkers api-key, coworkers me, jobs list, jobs get'
+    ];
+
+    if (errors.length > 0) {
+      lines.push('', 'Errors:');
+      for (const err of errors) {
+        lines.push(`  ${err.resource}: ${err.message}`);
+      }
+    }
+
+    writeText(io.stdout, lines);
+  }
+
+  return 0;
+}
+
+async function handleAgentsCommand(args, io, {signal} = {}) {
   const subcommand = args._[1];
   const jsonOutput = isJsonOutput(args);
 
   if (!subcommand || subcommand === 'list') {
     const limit = parsePositiveInteger(getOption(args, 'limit'), {label: '--limit'});
-    const {agents} = await fetchAgents();
+    const {agents} = await fetchAgents({signal});
     const filtered = applyListFilters(agents, {
       search: getOption(args, 'search'),
       limit,
@@ -390,6 +488,10 @@ async function handleAgentsCommand(args, io) {
       throw new Error('agent id is required for `agents hire`');
     }
 
+    if (!getOption(args, 'input-json') && !getOption(args, 'input-file')) {
+      throw new Error('--input-json or --input-file is required for `agents hire`');
+    }
+
     const inputData = await readJsonObject({
       jsonText: getOption(args, 'input-json'),
       filePath: getOption(args, 'input-file'),
@@ -397,13 +499,13 @@ async function handleAgentsCommand(args, io) {
     });
 
     const maxCredits = parsePositiveInteger(getOption(args, 'max-credits'), {label: '--max-credits'});
-    const {schema} = await fetchAgentInputSchema(agentId);
+    const {schema} = await fetchAgentInputSchema(agentId, {signal});
     const {job} = await createAgentJob(agentId, {
       inputSchema: schema,
       inputData,
       maxCredits,
       name: getOption(args, 'name')
-    });
+    }, {signal});
 
     if (jsonOutput) {
       writeJson(io.stdout, {job});
@@ -420,16 +522,20 @@ async function handleAgentsCommand(args, io) {
   throw new Error(`Unknown agents subcommand: ${subcommand}`);
 }
 
-async function handleCoworkersCommand(args, io) {
+async function handleCoworkersCommand(args, io, {signal} = {}) {
   const subcommand = args._[1];
   const jsonOutput = isJsonOutput(args);
 
   if (!subcommand || subcommand === 'list') {
     const limit = parsePositiveInteger(getOption(args, 'limit'), {label: '--limit'});
-    const capabilities = validateCapabilities(normalizeCapabilities(getOption(args, 'capability', 'capabilities')));
+    const rawCaps = getOption(args, 'capability', 'capabilities');
+    const capabilities = rawCaps != null
+      ? validateCapabilities(normalizeCapabilities(rawCaps))
+      : [];
     const {coworkers} = await fetchCoworkers({
       scope: getOption(args, 'scope'),
-      capabilities
+      capabilities,
+      signal
     });
 
     const filtered = applyListFilters(coworkers, {
@@ -457,14 +563,14 @@ async function handleCoworkersCommand(args, io) {
   if (subcommand === 'register') {
     const payload = await buildCoworkerCreatePayload(args);
     const shouldCreateApiKey = Boolean(getOption(args, 'create-api-key', 'with-api-key'));
-    const {coworker} = await createCoworker(payload);
+    const {coworker} = await createCoworker(payload, {signal});
 
     let apiKey = null;
     if (shouldCreateApiKey) {
       const apiKeyResult = await createCoworkerApiKey(coworker.id, {
         name: getOption(args, 'api-key-name'),
         expiresAt: getOption(args, 'api-key-expires-at')
-      });
+      }, {signal});
       apiKey = apiKeyResult.apiKey;
     }
 
@@ -488,7 +594,7 @@ async function handleCoworkersCommand(args, io) {
       delete payload.name;
     }
 
-    const {coworker} = await updateCoworker(coworkerId, payload);
+    const {coworker} = await updateCoworker(coworkerId, payload, {signal});
 
     if (jsonOutput) {
       writeJson(io.stdout, {coworker});
@@ -513,7 +619,7 @@ async function handleCoworkersCommand(args, io) {
     const {apiKey} = await createCoworkerApiKey(coworkerId, {
       name: getOption(args, 'name', 'api-key-name'),
       expiresAt: getOption(args, 'expires-at', 'api-key-expires-at')
-    });
+    }, {signal});
 
     if (jsonOutput) {
       writeJson(io.stdout, {coworkerId, apiKey});
@@ -524,7 +630,7 @@ async function handleCoworkersCommand(args, io) {
   }
 
   if (subcommand === 'me') {
-    const {coworker} = await fetchCurrentCoworker();
+    const {coworker} = await fetchCurrentCoworker({signal});
     if (jsonOutput) {
       writeJson(io.stdout, {coworker});
     } else {
@@ -545,13 +651,13 @@ async function handleCoworkersCommand(args, io) {
   throw new Error(`Unknown coworkers subcommand: ${subcommand}`);
 }
 
-async function handleJobsCommand(args, io) {
+async function handleJobsCommand(args, io, {signal} = {}) {
   const subcommand = args._[1];
   const jsonOutput = isJsonOutput(args);
 
   if (!subcommand || subcommand === 'list') {
     const limit = parsePositiveInteger(getOption(args, 'limit'), {label: '--limit'});
-    const {jobs} = await fetchJobs();
+    const {jobs} = await fetchJobs({signal});
     const filtered = Number.isInteger(limit) ? jobs.slice(0, limit) : jobs;
 
     if (jsonOutput) {
@@ -568,7 +674,7 @@ async function handleJobsCommand(args, io) {
       throw new Error('job id is required for `jobs get`');
     }
 
-    const {job} = await fetchJob(jobId);
+    const {job} = await fetchJob(jobId, {signal});
 
     if (jsonOutput) {
       writeJson(io.stdout, {job});
@@ -580,6 +686,8 @@ async function handleJobsCommand(args, io) {
 
   throw new Error(`Unknown jobs subcommand: ${subcommand}`);
 }
+
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 export async function runCli(argv, io = {}) {
   const stdout = io.stdout || process.stdout;
@@ -604,17 +712,24 @@ export async function runCli(argv, io = {}) {
     return 0;
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
   try {
+    if (command === 'discover') {
+      return await handleDiscoverCommand(args, {stdout, stderr}, {signal: controller.signal});
+    }
+
     if (command === 'agents') {
-      return await handleAgentsCommand(args, {stdout, stderr});
+      return await handleAgentsCommand(args, {stdout, stderr}, {signal: controller.signal});
     }
 
     if (command === 'coworkers') {
-      return await handleCoworkersCommand(args, {stdout, stderr});
+      return await handleCoworkersCommand(args, {stdout, stderr}, {signal: controller.signal});
     }
 
     if (command === 'jobs') {
-      return await handleJobsCommand(args, {stdout, stderr});
+      return await handleJobsCommand(args, {stdout, stderr}, {signal: controller.signal});
     }
 
     if (command === 'help') {
@@ -624,15 +739,21 @@ export async function runCli(argv, io = {}) {
 
     throw new Error(`Unknown command: ${command}`);
   } catch (error) {
+    const message = error?.name === 'AbortError'
+      ? `Request timed out after ${DEFAULT_TIMEOUT_MS / 1000}s`
+      : (error?.message || 'Unknown error');
+
     if (isJsonOutput(args)) {
-      writeJson(stdout, buildErrorPayload(error));
+      writeJson(stdout, buildErrorPayload({...error, message}));
     } else {
       writeText(stderr, [
-        `Error: ${error?.message || 'Unknown error'}`,
+        `Error: ${message}`,
         error?.status ? `status: ${error.status}` : '',
         error?.body ? `body: ${typeof error.body === 'string' ? error.body : JSON.stringify(error.body)}` : ''
       ]);
     }
     return 1;
+  } finally {
+    clearTimeout(timeout);
   }
 }

@@ -14,4 +14,3 @@ if (argv.length === 0) {
     process.exit(exitCode);
   }
 }
-

@@ -11,8 +11,8 @@ const KEY_NAME = 'SOKOSUMI_API_KEY';
 const URL_NAME = 'SOKOSUMI_API_URL';
 const WEB_URL_NAME = 'SOKOSUMI_WEB_URL';
 const AUTH_URL_NAME = 'SOKOSUMI_AUTH_URL';
-const DEFAULT_API_URL = 'https://api.sokosumi.com';
-const PREPROD_API_URL = 'https://api.preprod.sokosumi.com';
+export const DEFAULT_API_URL = 'https://api.sokosumi.com';
+export const PREPROD_API_URL = 'https://api.preprod.sokosumi.com';
 const KNOWN_API_URLS = [DEFAULT_API_URL, PREPROD_API_URL];
 
 function ensureSokosumiDir() {
