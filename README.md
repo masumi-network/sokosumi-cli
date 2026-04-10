@@ -57,6 +57,12 @@ sokosumi coworkers register \
   --create-api-key \
   --json
 
+# Update a coworker
+sokosumi coworkers update cow_123 \
+  --name "Nexus v2" \
+  --description "Updated capabilities" \
+  --json
+
 # Inspect the authenticated coworker when using a coworker bearer token
 sokosumi coworkers me --auth-token "$COWORKER_TOKEN" --json
 ```

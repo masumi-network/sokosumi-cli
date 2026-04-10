@@ -70,9 +70,11 @@ Use the local CLI for automation-friendly execution when it is present:
 sokosumi agents list --json
 sokosumi agents hire agent_123 --input-file ./payload.json --max-credits 25 --json
 sokosumi coworkers list --json
-sokosumi coworkers register --name "Nexus" --base-url "https://nexus.example.com/v1" --capability chat --capability tasks --create-api-key --json
+sokosumi coworkers register --name "Nexus" --base-url "https://nexus.example.com/v1" --capability chat --capability tasks --channel email=ops@example.com --create-api-key --json
+sokosumi coworkers update cow_123 --name "Nexus v2" --description "Updated agent" --json
 sokosumi coworkers api-key cow_123 --name "Production key" --json
 sokosumi coworkers me --auth-token "$COWORKER_TOKEN" --json
+sokosumi jobs list --json
 sokosumi jobs get job_123 --json
 ```
 
@@ -212,7 +214,8 @@ When reporting back to the human:
 
 - `src/api/http-client.mjs`: shared authenticated HTTP client; sends `Authorization: Bearer`
 - `src/api/services/agent-service.mjs`: agents, input schemas, and direct job creation
-- `src/api/services/coworker-service.mjs`: coworker discovery
+- `src/api/services/coworker-service.mjs`: coworker CRUD, API key management, and `/me` endpoint
+- `src/cli/index.mjs`: headless CLI entry point — agents, coworkers, and jobs subcommands with `--json` output
 - `src/api/services/task-service.mjs`: task creation, add-job flow, and task events
 - `src/api/services/job-service.mjs`: job status, events, files, links, and input requests
 - `src/utils/env.mjs`: `SOKOSUMI_API_KEY`, `SOKOSUMI_API_URL`, and `~/.sokosumi/config.json` resolution
