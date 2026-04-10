@@ -8,10 +8,12 @@ import {
   fetchCoworkers,
   fetchCurrentCoworker,
   fetchJob,
-  fetchJobs
+  fetchJobs,
+  updateCoworker
 } from '../api/index.mjs';
 import {getAgentDescriptionSummary} from '../utils/agent-description.mjs';
 import {loadEnvFromLocalFile} from '../utils/env.mjs';
+import {normalizeCapabilities} from '../utils/normalize.mjs';
 import {asArray, getOption, parseArgs} from './args.mjs';
 
 const HELP_TEXT = `Sokosumi CLI
@@ -22,6 +24,7 @@ Usage:
   sokosumi agents hire <agent-id> (--input-json JSON | --input-file PATH) [--name JOB_NAME] [--max-credits N] [--json]
   sokosumi coworkers list [--search QUERY] [--limit N] [--scope whitelisted|all|archived] [--capability chat|tasks] [--json]
   sokosumi coworkers register --name NAME [--caption TEXT] [--company NAME] [--company-logo URL] [--url URL] [--base-url URL] [--description TEXT] [--image URL] [--priority N] [--capability chat|tasks] [--channel PROVIDER=VALUE] [--metadata-json JSON | --metadata-file PATH] [--create-api-key] [--api-key-name NAME] [--api-key-expires-at ISO] [--json]
+  sokosumi coworkers update <coworker-id> [--name NAME] [--caption TEXT] [--company NAME] [--company-logo URL] [--url URL] [--base-url URL] [--description TEXT] [--image URL] [--priority N] [--capability chat|tasks] [--channel PROVIDER=VALUE] [--metadata-json JSON | --metadata-file PATH] [--json]
   sokosumi coworkers api-key <coworker-id> [--name KEY_NAME] [--expires-at ISO] [--json]
   sokosumi coworkers me [--json]
   sokosumi jobs list [--limit N] [--json]
@@ -58,13 +61,6 @@ function parseInteger(value, {label} = {}) {
     throw new Error(`${label || 'value'} must be an integer`);
   }
   return parsed;
-}
-
-function normalizeCapabilities(input) {
-  return asArray(input)
-    .flatMap(value => String(value).split(','))
-    .map(value => value.trim())
-    .filter(Boolean);
 }
 
 function normalizeSearch(text) {
@@ -171,7 +167,7 @@ function applyRuntimeOverrides(args) {
 }
 
 function isJsonOutput(args) {
-  return Boolean(args.json);
+  return args.json === true || args.json === 'true';
 }
 
 function writeJson(stdout, payload) {
@@ -455,6 +451,35 @@ async function handleCoworkersCommand(args, io) {
       writeJson(io.stdout, {coworker, apiKey});
     } else {
       printCoworkerRegistration(io.stdout, coworker, apiKey);
+    }
+    return 0;
+  }
+
+  if (subcommand === 'update') {
+    const coworkerId = args._[2] || getOption(args, 'id', 'coworker-id');
+    if (!coworkerId) {
+      throw new Error('coworker id is required for `coworkers update`');
+    }
+
+    const payload = await buildCoworkerCreatePayload(args);
+    delete payload.name;
+    const nameValue = getOption(args, 'name');
+    if (nameValue != null) {
+      payload.name = nameValue;
+    }
+
+    const {coworker} = await updateCoworker(coworkerId, payload);
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {coworker});
+    } else {
+      writeText(io.stdout, [
+        `Updated coworker ${coworker.name || coworker.id} [${coworker.id}]`,
+        coworker.baseURL ? `baseURL: ${coworker.baseURL}` : '',
+        Array.isArray(coworker.capabilities) && coworker.capabilities.length > 0
+          ? `capabilities: ${coworker.capabilities.join(', ')}`
+          : ''
+      ]);
     }
     return 0;
   }
