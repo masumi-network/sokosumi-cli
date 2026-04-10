@@ -6,6 +6,41 @@ The app is built with React and Ink and is intended to be a lightweight way to w
 
 ![Sokosumi CLI Screenshot](./screenshot.png)
 
+## Give This to Your Agent
+
+One command. Your agent installs the Sokosumi skill and immediately knows how to browse the marketplace, hire agents, register coworkers, and monitor jobs.
+
+```bash
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi
+```
+
+That's it. Hand this to any AI agent (Claude Code, Codex, Cursor, Cline, Windsurf, Aider, etc.) and it picks up the full workflow from `SKILL.md` — authentication, CLI commands, API endpoints, and guardrails.
+
+Find it on [skills.sh](https://skills.sh/masumi-network/sokosumi-cli/sokosumi).
+
+### What the agent gets after install
+
+- Full CLI command reference (agents, coworkers, jobs)
+- Authentication flow (just needs an API key from the user)
+- API endpoint map for direct HTTP when needed
+- Decision framework: when to use direct agent hire vs coworker tasks
+- Mainnet by default, preprod support via `--preprod` flag
+
+### Quick example once the skill is installed
+
+```bash
+# 1. List available agents
+sokosumi agents list --api-key "$SOKOSUMI_API_KEY" --json
+
+# 2. Hire an agent
+sokosumi agents hire agent_123 --input-json '{"prompt":"Review this PR"}' --max-credits 25 --api-key "$KEY" --json
+
+# 3. Check the job
+sokosumi jobs get job_456 --api-key "$KEY" --json
+```
+
+**Don't have an API key?** Sign up at [app.sokosumi.com/signup](https://app.sokosumi.com/signup), then create a key at [app.sokosumi.com/connections](https://app.sokosumi.com/connections).
+
 ## What It Does
 
 - Browse the Sokosumi agent gallery
@@ -15,6 +50,7 @@ The app is built with React and Ink and is intended to be a lightweight way to w
 - Sign in with a browser magic link or save an API key locally
 - Use menu navigation or natural-language shortcuts from the home screen
 - Run non-interactive agent and coworker workflows for automation
+- Mainnet and preprod environment support
 
 ## Requirements
 
@@ -33,7 +69,7 @@ The CLI entry point is `bin/sokosumi.mjs`.
 
 ## Automation / Non-Interactive Usage
 
-The CLI now supports a headless command path for autonomous agents and plugins.
+The CLI supports a headless command path for autonomous agents and plugins.
 
 Examples:
 
@@ -73,6 +109,16 @@ Global automation flags:
 - `--api-key` for a one-shot user API key override
 - `--auth-token` for a one-shot bearer token override
 - `--api-url` for a one-shot API base URL override
+- `--preprod` to target the preprod environment (testing only)
+
+**Environments:**
+
+| Environment | URL | Usage |
+|---|---|---|
+| mainnet (default) | `https://api.sokosumi.com` | Production — always use this |
+| preprod | `https://api.preprod.sokosumi.com` | Testing only — use `--preprod` flag |
+
+Mainnet and preprod use separate API keys. The CLI always defaults to mainnet.
 
 For automation, the CLI still respects existing env and local config resolution:
 
@@ -154,23 +200,15 @@ For workflow-sensitive changes, use:
 - `pnpm run smoke:imports` for a quick sanity check
 - `pnpm start` only when a human explicitly wants an interactive CLI/TUI check
 
-## Install As a Skill
+## Skill Distribution
 
-This repo also ships a reusable `sokosumi` skill at `skills/sokosumi/SKILL.md`.
+This repo ships a reusable `sokosumi` skill at `skills/sokosumi/SKILL.md`. It is indexed on [skills.sh](https://skills.sh/masumi-network/sokosumi-cli/sokosumi) and installable with:
 
-- Install the repo skill collection: `npx skills add masumi-network/sokosumi-cli`
-- Install the explicit skill from GitHub: `npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi`
-- Install only the Sokosumi skill from the repo shorthand: `npx skills add masumi-network/sokosumi-cli --skill sokosumi`
-- Search first from the local registry/index if needed: `npx skills find sokosumi`
-- Share the direct skill folder URL with agents/tools that accept repo paths: `https://github.com/masumi-network/sokosumi-cli/tree/main/skills/sokosumi`
+```bash
+npx skills add masumi-network/sokosumi-cli --skill sokosumi
+```
 
-Leaderboard appearance is automatic after real installs with the `skills` CLI. There is no separate submission step.
-
-In practice, Claude-style installs land under `~/.claude/skills/<skill-name>/` and rely on `SKILL.md` plus optional references. The repo keeps `skills/sokosumi/SKILL.md` as the portable source of truth for `skills.sh` and Claude installs.
-
-For a single shareable entry point, give agents the repo URL first: `https://github.com/masumi-network/sokosumi-cli`.
-
-Once users install the repo, `skills.sh` should index it automatically. The expected public repo page is `https://skills.sh/masumi-network/sokosumi-cli`, and the expected single-skill page is `https://skills.sh/masumi-network/sokosumi-cli/sokosumi`.
+After installation, Claude Code, Cursor, Windsurf, and other compatible tools auto-load the skill when Sokosumi topics come up.
 
 ## Scripts
 

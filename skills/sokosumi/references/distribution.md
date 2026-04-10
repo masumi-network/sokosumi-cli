@@ -18,12 +18,17 @@ They do not require agent-specific YAML files to function.
 
 ## Repo Install Path
 
-For this repository, the stable install commands are:
+The primary install command (give this to your agent):
+
+```bash
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi
+```
+
+Alternative forms:
 
 ```bash
 npx skills add masumi-network/sokosumi-cli
 npx skills add masumi-network/sokosumi-cli --skill sokosumi
-npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi
 ```
 
 If users want to discover the registry/search entry first, point them at:
