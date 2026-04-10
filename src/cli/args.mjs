@@ -9,6 +9,11 @@ export function parseArgs(argv) {
       continue;
     }
 
+    if (token === '-v' || token === '--version') {
+      args.version = true;
+      continue;
+    }
+
     if (!token.startsWith('--')) {
       args._.push(token);
       continue;
