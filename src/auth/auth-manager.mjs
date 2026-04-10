@@ -5,6 +5,8 @@ import {
   hasStoredCredentials
 } from './token-store.mjs';
 
+const AUTH_TOKEN_ENV_NAME = 'SOKOSUMI_AUTH_TOKEN';
+
 /**
  * Authentication Manager - Handles token lifecycle and authentication state
  */
@@ -87,6 +89,14 @@ export class AuthManager {
    * @returns {string|null}
    */
   getAuthToken() {
+    const envToken = typeof process.env[AUTH_TOKEN_ENV_NAME] === 'string'
+      ? process.env[AUTH_TOKEN_ENV_NAME].trim()
+      : '';
+
+    if (envToken) {
+      return envToken;
+    }
+
     if (!this.isAuthenticated()) {
       return null;
     }

@@ -4,6 +4,7 @@ import ScreenContainer from '../components/screen-container.mjs';
 import SelectInput from '../components/select-input.mjs';
 import PixelLoader from '../components/pixel-loader.mjs';
 import {fetchAgents} from '../api/index.mjs';
+import {getAgentDescriptionSummary} from '../utils/agent-description.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
@@ -71,6 +72,10 @@ export default function AgentsView({onBack, onSelectAgent, onHireAgent}) {
     () => (highlightedAgent?.tags || []).map(tag => tag?.name).filter(Boolean),
     [highlightedAgent]
   );
+  const highlightedDescription = useMemo(
+    () => getAgentDescriptionSummary(highlightedAgent?.description, {maxLength: 360}),
+    [highlightedAgent?.description]
+  );
 
   return React.createElement(
     ScreenContainer,
@@ -98,7 +103,7 @@ export default function AgentsView({onBack, onSelectAgent, onHireAgent}) {
         highlightedAgent
           ? React.createElement(Box, {flexDirection: 'column', width: '100%'},
               React.createElement(Text, {bold: true, color: BRAND_HEX}, highlightedAgent.name || highlightedAgent.id || 'Agent Preview'),
-              highlightedAgent.description && React.createElement(Text, {dimColor: true}, highlightedAgent.description),
+              highlightedDescription && React.createElement(Text, {dimColor: true}, highlightedDescription),
               selectedTags.length > 0 && React.createElement(Text, {dimColor: true}, `Tags: ${selectedTags.join(', ')}`),
               highlightedAgent?.price?.credits != null && React.createElement(Text, {dimColor: true}, `Price: ${highlightedAgent.price.credits} credits`),
               React.createElement(Text, {dimColor: true}, 'Enter opens details. Press H to hire immediately.')

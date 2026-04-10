@@ -5,6 +5,7 @@ import {fetchAgentJobs} from '../api/index.mjs';
 import SelectInput from '../components/select-input.mjs';
 import PixelLoader from '../components/pixel-loader.mjs';
 import {getJobStatusLabel, getJobStatusTone} from '../utils/status.mjs';
+import {getAgentDescriptionSummary} from '../utils/agent-description.mjs';
 
 const BRAND_HEX = '#7F00FF';
 
@@ -16,6 +17,10 @@ export default function AgentDetailsView({agent, onBack}) {
   const [lastJobIndex, setLastJobIndex] = useState(0);
 
   const tags = (agent?.tags || []).map(t => t?.name).filter(Boolean);
+  const agentDescription = useMemo(
+    () => getAgentDescriptionSummary(agent?.description, {maxLength: 520}),
+    [agent?.description]
+  );
 
   useEffect(() => {
     let aborted = false;
@@ -139,7 +144,7 @@ export default function AgentDetailsView({agent, onBack}) {
     React.createElement(Box, {flexDirection: 'column', width: '100%'},
     // Header with Agent info
     React.createElement(Text, {color: BRAND_HEX, bold: true}, agent?.name || 'Agent'),
-    agent?.description && React.createElement(Text, null, agent.description),
+    agentDescription && React.createElement(Text, null, agentDescription),
     tags.length > 0 && React.createElement(Text, {dimColor: true}, `Tags: ${tags.join(', ')}`),
     agent?.price?.credits != null && React.createElement(Text, {color: BRAND_HEX}, `Credits: ${agent.price.credits}`),
 
@@ -223,4 +228,3 @@ export default function AgentDetailsView({agent, onBack}) {
     )
   );
 }
-
