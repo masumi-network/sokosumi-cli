@@ -12,7 +12,7 @@ import {
   fetchJobs,
   updateCoworker
 } from '../api/index.mjs';
-import {getAgentDescriptionSummary} from '../utils/agent-description.mjs';
+
 import {loadEnvFromLocalFile} from '../utils/env.mjs';
 import {normalizeCapabilities} from '../utils/normalize.mjs';
 import {asArray, getOption, parseArgs} from './args.mjs';
@@ -214,11 +214,9 @@ function printAgentList(stdout, agents) {
   for (const agent of agents) {
     const tags = (agent.tags || []).map(tag => tag.name).filter(Boolean).join(', ');
     const price = agent?.price?.credits != null ? `${agent.price.credits} credits` : 'price n/a';
-    const description = getAgentDescriptionSummary(agent.description, {maxLength: 220});
     lines.push(`${agent.name || 'Unnamed Agent'} [${agent.id}]`);
     lines.push(`  status: ${agent.status || 'unknown'} | ${price}`);
     if (tags) lines.push(`  tags: ${tags}`);
-    if (description) lines.push(`  description: ${description}`);
   }
 
   writeText(stdout, lines);
@@ -298,7 +296,9 @@ function printCoworkerRegistration(stdout, coworker, apiKey) {
   }
 
   if (apiKey?.token) {
-    lines.push(`coworker api key: ${apiKey.token}`);
+    const masked = `${apiKey.token.slice(0, 8)}..${apiKey.token.slice(-4)}`;
+    lines.push(`coworker api key: ${masked}`);
+    lines.push('WARNING: Token is partially masked in text output. Use --json to retrieve the full token.');
     lines.push('Store this token securely. It is only returned once.');
   }
 
@@ -306,11 +306,15 @@ function printCoworkerRegistration(stdout, coworker, apiKey) {
 }
 
 function printCoworkerApiKey(stdout, coworkerId, apiKey) {
+  const masked = apiKey.token
+    ? `${apiKey.token.slice(0, 8)}..${apiKey.token.slice(-4)}`
+    : '(none)';
   writeText(stdout, [
     `Created API key for coworker ${coworkerId}`,
     apiKey.name ? `name: ${apiKey.name}` : '',
     apiKey.expiresAt ? `expiresAt: ${apiKey.expiresAt.toISOString()}` : '',
-    `token: ${apiKey.token}`,
+    `token: ${masked}`,
+    'WARNING: Token is partially masked in text output. Use --json to retrieve the full token.',
     'Store this token securely. It is only returned once.'
   ]);
 }
