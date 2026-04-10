@@ -1,3 +1,4 @@
+import {createRequire} from 'module';
 import fsPromises from 'fs/promises';
 import {
   createAgentJob,
@@ -15,6 +16,11 @@ import {getAgentDescriptionSummary} from '../utils/agent-description.mjs';
 import {loadEnvFromLocalFile} from '../utils/env.mjs';
 import {normalizeCapabilities} from '../utils/normalize.mjs';
 import {asArray, getOption, parseArgs} from './args.mjs';
+
+const require = createRequire(import.meta.url);
+const {version: CLI_VERSION} = require('../../package.json');
+
+const VALID_CAPABILITIES = ['chat', 'tasks'];
 
 const HELP_TEXT = `Sokosumi CLI
 
@@ -36,13 +42,23 @@ Global options:
   --api-url URL
   --json
   -h, --help
+  -v, --version
 `;
+
+function validateCapabilities(capabilities) {
+  for (const cap of capabilities) {
+    if (!VALID_CAPABILITIES.includes(cap)) {
+      throw new Error(`Invalid capability "${cap}". Allowed values: ${VALID_CAPABILITIES.join(', ')}`);
+    }
+  }
+  return capabilities;
+}
 
 function truncate(value, max = 100) {
   const text = String(value ?? '').trim();
   if (!text) return '';
   if (text.length <= max) return text;
-  return `${text.slice(0, max - 1)}...`;
+  return `${text.slice(0, max - 1)}…`;
 }
 
 function parsePositiveInteger(value, {label} = {}) {
@@ -338,7 +354,7 @@ async function buildCoworkerCreatePayload(args) {
     description: getOption(args, 'description'),
     image: getOption(args, 'image'),
     priority: parseInteger(getOption(args, 'priority'), {label: '--priority'}),
-    capabilities: normalizeCapabilities(getOption(args, 'capability', 'capabilities')),
+    capabilities: validateCapabilities(normalizeCapabilities(getOption(args, 'capability', 'capabilities'))),
     metadata: mergedMetadata
   };
 }
@@ -406,9 +422,10 @@ async function handleCoworkersCommand(args, io) {
 
   if (!subcommand || subcommand === 'list') {
     const limit = parsePositiveInteger(getOption(args, 'limit'), {label: '--limit'});
+    const capabilities = validateCapabilities(normalizeCapabilities(getOption(args, 'capability', 'capabilities')));
     const {coworkers} = await fetchCoworkers({
       scope: getOption(args, 'scope'),
-      capabilities: normalizeCapabilities(getOption(args, 'capability', 'capabilities'))
+      capabilities
     });
 
     const filtered = applyListFilters(coworkers, {
@@ -462,10 +479,9 @@ async function handleCoworkersCommand(args, io) {
     }
 
     const payload = await buildCoworkerCreatePayload(args);
-    delete payload.name;
-    const nameValue = getOption(args, 'name');
-    if (nameValue != null) {
-      payload.name = nameValue;
+    // For updates, name is optional — only include if explicitly provided
+    if (getOption(args, 'name') == null) {
+      delete payload.name;
     }
 
     const {coworker} = await updateCoworker(coworkerId, payload);
@@ -565,6 +581,11 @@ export async function runCli(argv, io = {}) {
   const stdout = io.stdout || process.stdout;
   const stderr = io.stderr || process.stderr;
   const args = parseArgs(argv);
+
+  if (args.version) {
+    writeText(stdout, [`sokosumi ${CLI_VERSION}`]);
+    return 0;
+  }
 
   if (args.help) {
     writeText(stdout, [HELP_TEXT.trimEnd()]);
