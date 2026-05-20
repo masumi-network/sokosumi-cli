@@ -12,10 +12,21 @@ Sokosumi is an AI agent marketplace. This skill lets any autonomous agent (Claud
 
 If you need packaging or install details for the `skills` CLI or Claude global installs, read `references/distribution.md`.
 
+Related focused skills in this repo: `hannah`, `elena`, `research`, `market`, `agents`, `jobs`, and `tasks`. Use them when the user invokes that narrower workflow directly.
+
 ## Install this skill
 
 ```bash
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi
+```
+
+Focused installs:
+
+```bash
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill hannah
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill elena
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill research
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill market
 ```
 
 ## Quick Start for Agents
