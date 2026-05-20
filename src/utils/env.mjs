@@ -95,7 +95,14 @@ export function deriveWebUrlFromApiUrl(apiUrl) {
 }
 
 export function deriveAuthUrlFromApiUrl(apiUrl) {
-  return `${deriveWebUrlFromApiUrl(apiUrl)}/api/auth`;
+  const fallback = `${DEFAULT_API_URL}/auth`;
+
+  try {
+    const parsed = new URL(apiUrl || DEFAULT_API_URL);
+    return `${parsed.origin.replace(/\/+$/g, '')}/auth`;
+  } catch {
+    return fallback;
+  }
 }
 
 export function loadEnvFromLocalFile() {
@@ -135,7 +142,7 @@ export function getWebBaseUrlFromEnv() {
 }
 
 export function getAuthBaseUrlFromEnv() {
-  return process.env[AUTH_URL_NAME] || readCliConfig().authUrl || `${getWebBaseUrlFromEnv()}/api/auth`;
+  return process.env[AUTH_URL_NAME] || readCliConfig().authUrl || deriveAuthUrlFromApiUrl(getApiBaseUrlFromEnv());
 }
 
 export function getKnownApiBaseUrls() {

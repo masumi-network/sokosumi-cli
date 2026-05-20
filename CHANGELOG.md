@@ -14,6 +14,7 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - coworker browsing, task creation, task details, and live dashboard flows
 - improved direct job review with files, links, and clearer status handling
 - repo-local Sokosumi workflow skill at `skills/sokosumi/SKILL.md`
+- focused skills.sh entries for Hannah, Elena, research, market, agents, jobs, and tasks
 - documented `skills.sh` install commands and shareable entry-point URLs for the `sokosumi` skill
 
 ### Changed

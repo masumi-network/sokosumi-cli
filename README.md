@@ -18,6 +18,15 @@ That's it. Hand this to any AI agent (Claude Code, Codex, Cursor, Cline, Windsur
 
 Find it on [skills.sh](https://skills.sh/masumi-network/sokosumi-cli/sokosumi).
 
+Specialized skills are available from the same repo when the user wants a short, focused entry point:
+
+```bash
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill hannah
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill elena
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill research
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill market
+```
+
 ### What the agent gets after install
 
 - Full CLI command reference (agents, coworkers, jobs)
@@ -202,10 +211,22 @@ For workflow-sensitive changes, use:
 
 ## Skill Distribution
 
-This repo ships a reusable `sokosumi` skill at `skills/sokosumi/SKILL.md`. It is indexed on [skills.sh](https://skills.sh/masumi-network/sokosumi-cli/sokosumi) and installable with:
+This repo ships reusable skills under `skills/<name>/SKILL.md`. The general `sokosumi` skill is indexed on [skills.sh](https://skills.sh/masumi-network/sokosumi-cli/sokosumi) and installable with:
 
 ```bash
 npx skills add masumi-network/sokosumi-cli --skill sokosumi
+```
+
+Focused entry points are also included for agent and coworker workflows:
+
+```bash
+npx skills add masumi-network/sokosumi-cli --skill hannah
+npx skills add masumi-network/sokosumi-cli --skill elena
+npx skills add masumi-network/sokosumi-cli --skill research
+npx skills add masumi-network/sokosumi-cli --skill market
+npx skills add masumi-network/sokosumi-cli --skill agents
+npx skills add masumi-network/sokosumi-cli --skill jobs
+npx skills add masumi-network/sokosumi-cli --skill tasks
 ```
 
 After installation, Claude Code, Cursor, Windsurf, and other compatible tools auto-load the skill when Sokosumi topics come up.

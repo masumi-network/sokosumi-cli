@@ -2,7 +2,7 @@
 
 This skill is packaged in the portable format that Claude-style skill installers already use in practice:
 
-- required: `skills/sokosumi/SKILL.md`
+- required: `skills/<name>/SKILL.md`
 - optional: extra `references/`, `scripts/`, or assets
 - optional only: platform-specific UI metadata like `agents/openai.yaml`
 
@@ -22,6 +22,10 @@ The primary install command (give this to your agent):
 
 ```bash
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill sokosumi
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill hannah
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill elena
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill research
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill market
 ```
 
 Alternative forms:
@@ -29,6 +33,7 @@ Alternative forms:
 ```bash
 npx skills add masumi-network/sokosumi-cli
 npx skills add masumi-network/sokosumi-cli --skill sokosumi
+npx skills add masumi-network/sokosumi-cli --skill hannah
 ```
 
 If users want to discover the registry/search entry first, point them at:
