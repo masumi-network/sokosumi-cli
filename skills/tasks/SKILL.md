@@ -7,46 +7,36 @@ metadata:
 
 # Sokosumi Tasks
 
-Use this skill when the user wants to create or inspect Sokosumi coworker tasks. The current CLI has task service support but does not expose task commands, so use the HTTP API directly for task operations.
+Use this skill when the user wants to create or inspect Sokosumi coworker tasks. Prefer the headless CLI with `--json`.
 
 ## Authentication
 
 Use `SOKOSUMI_API_KEY` if set. Otherwise ask the user to create an API key at `https://app.sokosumi.com/connections`.
 
-## API Commands
+## CLI Commands
 
 List tasks:
 
 ```bash
-API_BASE="${SOKOSUMI_API_URL:-https://api.sokosumi.com}"
-curl -sS "$API_BASE/v1/tasks" \
-  -H "Authorization: Bearer $SOKOSUMI_API_KEY"
+sokosumi tasks list --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 Create a task:
 
 ```bash
-API_BASE="${SOKOSUMI_API_URL:-https://api.sokosumi.com}"
-curl -sS "$API_BASE/v1/tasks" \
-  -H "Authorization: Bearer $SOKOSUMI_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Task title","description":"Task brief","coworkerId":"coworker_id","status":"READY"}'
+sokosumi tasks create --coworker-id coworker_id --name "Task title" --description "Task brief" --status READY --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 Inspect a task:
 
 ```bash
-API_BASE="${SOKOSUMI_API_URL:-https://api.sokosumi.com}"
-curl -sS "$API_BASE/v1/tasks/task_id" \
-  -H "Authorization: Bearer $SOKOSUMI_API_KEY"
+sokosumi tasks get task_id --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 Read task activity:
 
 ```bash
-API_BASE="${SOKOSUMI_API_URL:-https://api.sokosumi.com}"
-curl -sS "$API_BASE/v1/tasks/task_id/events" \
-  -H "Authorization: Bearer $SOKOSUMI_API_KEY"
+sokosumi tasks events task_id --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-Return task ids, statuses, latest activity, linked jobs, and next actions.
+If a READY task is created and it is not already terminal, immediately start the `watch` skill with the task id. Return task ids, statuses, latest activity, linked jobs, and what is being watched.

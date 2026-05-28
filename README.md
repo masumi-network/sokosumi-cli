@@ -25,14 +25,15 @@ npx skills add https://github.com/masumi-network/sokosumi-cli --skill hannah
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill elena
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill research
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill market
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill watch
 ```
 
 ### What the agent gets after install
 
-- Full CLI command reference (agents, coworkers, jobs)
+- Full CLI command reference (agents, coworkers, tasks, jobs)
 - Authentication flow (just needs an API key from the user)
 - API endpoint map for direct HTTP when needed
-- Decision framework: when to use direct agent hire vs coworker tasks
+- Decision framework: when to use direct agent hire vs coworker tasks, plus background watching for long-running work
 - Mainnet by default, preprod support via `--preprod` flag
 
 ### Quick example once the skill is installed
@@ -45,7 +46,7 @@ sokosumi agents list --api-key "$SOKOSUMI_API_KEY" --json
 sokosumi agents hire agent_123 --input-json '{"prompt":"Review this PR"}' --max-credits 25 --api-key "$KEY" --json
 
 # 3. Check the job
-sokosumi jobs get job_456 --api-key "$KEY" --json
+sokosumi jobs get job_456 --details --api-key "$KEY" --json
 ```
 
 **Don't have an API key?** Sign up at [app.sokosumi.com/signup](https://app.sokosumi.com/signup), then create a key at [app.sokosumi.com/connections](https://app.sokosumi.com/connections).
@@ -110,6 +111,13 @@ sokosumi coworkers update cow_123 \
 
 # Inspect the authenticated coworker when using a coworker bearer token
 sokosumi coworkers me --auth-token "$COWORKER_TOKEN" --json
+
+# Create and inspect coworker tasks
+sokosumi tasks create --coworker-id cow_123 --name "Task title" --description "Task brief" --status READY --json
+sokosumi tasks get task_123 --json
+
+# Get job details with events, files, links, and input requests
+sokosumi jobs get job_123 --details --json
 ```
 
 Global automation flags:
@@ -227,6 +235,7 @@ npx skills add masumi-network/sokosumi-cli --skill market
 npx skills add masumi-network/sokosumi-cli --skill agents
 npx skills add masumi-network/sokosumi-cli --skill jobs
 npx skills add masumi-network/sokosumi-cli --skill tasks
+npx skills add masumi-network/sokosumi-cli --skill watch
 ```
 
 After installation, Claude Code, Cursor, Windsurf, and other compatible tools auto-load the skill when Sokosumi topics come up.

@@ -22,7 +22,11 @@ Use `SOKOSUMI_API_KEY` if set. Otherwise ask the user to create an API key at `h
 sokosumi coworkers list --search hannah --capability tasks --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-Then create a task through `POST /v1/tasks` with `status: "READY"`.
+Then create a READY task:
+
+```bash
+sokosumi tasks create --coworker-id coworker_id --name "Research brief" --description "Full research brief" --status READY --api-key "$SOKOSUMI_API_KEY" --json
+```
 
 3. For a narrow one-agent research job, search agents:
 
@@ -36,10 +40,12 @@ sokosumi agents list --search "research" --api-key "$SOKOSUMI_API_KEY" --json
 sokosumi agents hire agent_id --input-json '{"prompt":"Research brief"}' --max-credits 25 --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-5. Monitor results:
+5. After creating a READY task or direct job, immediately start the `watch` skill with the task or job id. Do not wait for the work to finish.
+
+Manual status check if needed:
 
 ```bash
-sokosumi jobs get job_id --api-key "$SOKOSUMI_API_KEY" --json
+sokosumi jobs get job_id --details --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 Do not fabricate sources or capabilities. Use only returned Sokosumi data and job outputs.

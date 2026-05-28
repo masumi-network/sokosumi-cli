@@ -27,10 +27,10 @@ sokosumi agents list --search "code review" --api-key "$SOKOSUMI_API_KEY" --json
 sokosumi agents hire agent_id --input-json '{"prompt":"Task brief"}' --max-credits 25 --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-6. Monitor:
+6. If the job is still running, immediately start the `watch` skill with the job id. Manual status check:
 
 ```bash
-sokosumi jobs get job_id --api-key "$SOKOSUMI_API_KEY" --json
+sokosumi jobs get job_id --details --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 Prefer coworker tasks instead of direct agent jobs when the user has a broad outcome requiring coordination.

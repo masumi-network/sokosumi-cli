@@ -5,6 +5,32 @@ import {AgentJob} from '../models/agent-job.mjs';
 
 const TASKS_PATH = '/v1/tasks';
 
+function normalizeQueryValues(value) {
+  const values = Array.isArray(value) ? value : (value == null ? [] : [value]);
+  return values
+    .flatMap(item => String(item).split(','))
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function buildTasksPath({q, status, statuses, scope, coworkerId, cursor, take, skip} = {}) {
+  const params = new URLSearchParams();
+
+  if (q) params.set('q', String(q).trim());
+  if (scope) params.set('scope', String(scope).trim());
+  if (coworkerId) params.set('coworkerId', String(coworkerId).trim());
+  if (cursor) params.set('cursor', String(cursor).trim());
+  if (take) params.set('take', String(take).trim());
+  if (skip) params.set('skip', String(skip).trim());
+
+  for (const entry of normalizeQueryValues(statuses ?? status)) {
+    params.append('status', entry);
+  }
+
+  const query = params.toString();
+  return query ? `${TASKS_PATH}?${query}` : TASKS_PATH;
+}
+
 /**
  * Creates a new task for coworker orchestration
  * @param {Object} data
@@ -48,11 +74,22 @@ export async function fetchTask(taskId, {signal} = {}) {
 /**
  * Fetches all tasks for the current user
  * @param {Object} options
+ * @param {string} [options.q] - Task name search
+ * @param {string|string[]} [options.status] - Status filter(s)
+ * @param {string|string[]} [options.statuses] - Status filter(s)
+ * @param {string} [options.scope] - Task visibility scope
+ * @param {string} [options.coworkerId] - Coworker ID filter
+ * @param {string} [options.cursor] - Pagination cursor
+ * @param {number|string} [options.take] - Page size
+ * @param {number|string} [options.skip] - Pagination offset
  * @param {AbortSignal} [options.signal] - Abort signal
  * @returns {Promise<{response: ApiResponse, tasks: Task[]}>}
  */
-export async function fetchTasks({signal} = {}) {
-  const json = await httpGet(TASKS_PATH, {signal});
+export async function fetchTasks({q, status, statuses, scope, coworkerId, cursor, take, skip, signal} = {}) {
+  const json = await httpGet(
+    buildTasksPath({q, status, statuses, scope, coworkerId, cursor, take, skip}),
+    {signal}
+  );
   const resp = ApiResponse.from(json);
   const list = Array.isArray(resp.data) ? resp.data : [];
   const tasks = list.map(Task.from);

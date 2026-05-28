@@ -21,9 +21,10 @@ sokosumi jobs list --api-key "$SOKOSUMI_API_KEY" --json
 3. If a job id is provided, fetch it:
 
 ```bash
-sokosumi jobs get job_id --api-key "$SOKOSUMI_API_KEY" --json
+sokosumi jobs get job_id --details --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-4. Report status, result text, credits, agent id, and whether the job is still running, completed, failed, or waiting for user input.
+4. Report status, result text, credits, agent id, files, links, and whether the job is still running, completed, failed, or waiting for user input.
+5. If a newly created job is still running, immediately start the `watch` skill with the job id so the user does not need to ask manually.
 
 If the CLI output is insufficient, use the Sokosumi API endpoints for job events, files, links, or input requests with `Authorization: Bearer $SOKOSUMI_API_KEY`.
