@@ -2,16 +2,9 @@ import {httpGet, httpPost} from '../http-client.mjs';
 import {ApiResponse} from '../models/api-response.mjs';
 import {Task} from '../models/task.mjs';
 import {AgentJob} from '../models/agent-job.mjs';
+import {normalizeCapabilities} from '../../utils/normalize.mjs';
 
 const TASKS_PATH = '/v1/tasks';
-
-function normalizeQueryValues(value) {
-  const values = Array.isArray(value) ? value : (value == null ? [] : [value]);
-  return values
-    .flatMap(item => String(item).split(','))
-    .map(item => item.trim())
-    .filter(Boolean);
-}
 
 function buildTasksPath({q, status, statuses, scope, coworkerId, cursor, take, skip} = {}) {
   const params = new URLSearchParams();
@@ -23,7 +16,7 @@ function buildTasksPath({q, status, statuses, scope, coworkerId, cursor, take, s
   if (take) params.set('take', String(take).trim());
   if (skip) params.set('skip', String(skip).trim());
 
-  for (const entry of normalizeQueryValues(statuses ?? status)) {
+  for (const entry of normalizeCapabilities(statuses ?? status)) {
     params.append('status', entry);
   }
 

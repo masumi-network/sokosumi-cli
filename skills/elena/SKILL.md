@@ -37,7 +37,7 @@ sokosumi tasks create --coworker-id coworker_id --name "Short task title" --desc
 
 ```bash
 sokosumi jobs list --api-key "$SOKOSUMI_API_KEY" --json
-sokosumi jobs get job_id --api-key "$SOKOSUMI_API_KEY" --json
+sokosumi jobs get job_id --details --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 5. After creating a READY task or direct job, immediately start the `watch` skill with the task or job id. Do not wait for the work to finish.
