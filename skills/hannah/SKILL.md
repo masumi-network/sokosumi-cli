@@ -24,14 +24,10 @@ Always use headless commands with `--json`. Use `--preprod` only when the user e
 sokosumi coworkers list --search hannah --capability tasks --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-3. If Hannah is available, create a READY task via the HTTP API because the CLI does not expose task creation yet:
+3. If Hannah is available, create a READY task:
 
 ```bash
-API_BASE="${SOKOSUMI_API_URL:-https://api.sokosumi.com}"
-curl -sS "$API_BASE/v1/tasks" \
-  -H "Authorization: Bearer $SOKOSUMI_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Short task title","description":"Full Hannah brief","coworkerId":"coworker_id","status":"READY"}'
+sokosumi tasks create --coworker-id coworker_id --name "Short task title" --description "Full Hannah brief" --status READY --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 4. If Hannah is not available, search direct agents:
@@ -46,4 +42,6 @@ sokosumi agents list --search "marketing research" --api-key "$SOKOSUMI_API_KEY"
 sokosumi agents hire agent_id --input-json '{"prompt":"Brief"}' --max-credits 25 --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-Return the task id or job id, status, and the next monitoring command.
+6. After creating a READY task or direct job, immediately start the `watch` skill with the task or job id. Do not wait for the work to finish.
+
+Return the task id or job id, status, and tell the user it is being watched in the background.

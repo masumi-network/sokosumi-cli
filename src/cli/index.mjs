@@ -1,6 +1,8 @@
 import {createRequire} from 'module';
 import fsPromises from 'fs/promises';
 import {
+  createTask,
+  createTaskEvent,
   createAgentJob,
   createCoworker,
   createCoworkerApiKey,
@@ -9,7 +11,15 @@ import {
   fetchCoworkers,
   fetchCurrentCoworker,
   fetchJob,
+  fetchJobEvents,
+  fetchJobFiles,
+  fetchJobInputRequest,
+  fetchJobLinks,
   fetchJobs,
+  fetchTask,
+  fetchTaskEvents,
+  fetchTaskJobs,
+  fetchTasks,
   updateCoworker
 } from '../api/index.mjs';
 
@@ -34,8 +44,14 @@ Usage:
   sokosumi coworkers update <coworker-id> [--name NAME] [--caption TEXT] [--company NAME] [--company-logo URL] [--url URL] [--base-url URL] [--description TEXT] [--image URL] [--priority N] [--capability chat|tasks] [--channel PROVIDER=VALUE] [--metadata-json JSON | --metadata-file PATH] [--json]
   sokosumi coworkers api-key <coworker-id> [--name KEY_NAME] [--expires-at ISO] [--json]
   sokosumi coworkers me [--json]
+  sokosumi tasks list [--search QUERY] [--limit N] [--status STATUS] [--scope owned|workspace] [--coworker-id ID] [--json]
+  sokosumi tasks create --coworker-id ID --description TEXT [--name TASK_NAME] [--status READY|DRAFT] [--json]
+  sokosumi tasks get <task-id> [--json]
+  sokosumi tasks events <task-id> [--json]
+  sokosumi tasks jobs <task-id> [--json]
+  sokosumi tasks comment <task-id> (--comment TEXT | --status STATUS) [--json]
   sokosumi jobs list [--limit N] [--json]
-  sokosumi jobs get <job-id> [--json]
+  sokosumi jobs get <job-id> [--details] [--json]
 
 Global options:
   --api-key KEY
@@ -50,6 +66,8 @@ Environments:
   mainnet (default)  https://api.sokosumi.com
   preprod (testing)  https://api.preprod.sokosumi.com
 `;
+
+const TASK_CREATE_STATUSES = ['DRAFT', 'READY'];
 
 function validateCapabilities(capabilities) {
   for (const cap of capabilities) {
@@ -85,6 +103,15 @@ function parseInteger(value, {label} = {}) {
     throw new Error(`${label || 'value'} must be an integer`);
   }
   return parsed;
+}
+
+function parseTaskCreateStatus(value) {
+  if (value === undefined) return undefined;
+  const status = String(value).trim().toUpperCase();
+  if (!TASK_CREATE_STATUSES.includes(status)) {
+    throw new Error(`--status must be one of: ${TASK_CREATE_STATUSES.join(', ')}`);
+  }
+  return status;
 }
 
 function normalizeSearch(text) {
@@ -277,8 +304,14 @@ function printJobList(stdout, jobs) {
   writeText(stdout, lines);
 }
 
-function printJob(stdout, job) {
-  writeText(stdout, [
+function formatDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function printJob(stdout, job, details = {}) {
+  const lines = [
     `Job ${job.id}`,
     `status: ${job.status || 'unknown'}`,
     `agent: ${job.agentId || '-'}`,
@@ -286,7 +319,90 @@ function printJob(stdout, job) {
     job.credits != null ? `credits: ${job.credits}` : '',
     job.result ? `result: ${job.result}` : '',
     job.output ? `output: ${job.output}` : ''
+  ];
+
+  if (details.inputRequest) {
+    lines.push('input request: pending');
+  }
+
+  if (Array.isArray(details.events) && details.events.length > 0) {
+    lines.push(`events: ${details.events.length}`);
+    const latest = details.events[details.events.length - 1];
+    lines.push(`latest event: ${truncate(latest.message || latest.type || latest.id, 160)}`);
+  }
+
+  if (Array.isArray(details.files) && details.files.length > 0) {
+    lines.push(`files: ${details.files.length}`);
+    for (const file of details.files.slice(0, 3)) {
+      lines.push(`  ${file.name || file.id || 'file'}: ${file.url || '-'}`);
+    }
+  }
+
+  if (Array.isArray(details.links) && details.links.length > 0) {
+    lines.push(`links: ${details.links.length}`);
+    for (const link of details.links.slice(0, 3)) {
+      lines.push(`  ${link.title || link.id || 'link'}: ${link.url || '-'}`);
+    }
+  }
+
+  if (Array.isArray(details.detailsErrors) && details.detailsErrors.length > 0) {
+    lines.push(`detail errors: ${details.detailsErrors.map(err => err.resource).join(', ')}`);
+  }
+
+  writeText(stdout, lines);
+}
+
+function printTaskList(stdout, tasks) {
+  if (tasks.length === 0) {
+    writeText(stdout, ['No tasks found.']);
+    return;
+  }
+
+  const lines = ['Tasks'];
+  for (const task of tasks) {
+    lines.push(`${task.name || task.id} [${task.id}]`);
+    lines.push(`  status: ${task.status || 'unknown'} | coworker: ${task.coworkerName || task.coworkerId || '-'}`);
+    if (task.updatedAt) lines.push(`  updated: ${formatDate(task.updatedAt)}`);
+  }
+
+  writeText(stdout, lines);
+}
+
+function printTask(stdout, task, details = {}) {
+  writeText(stdout, [
+    `Task ${task.id}`,
+    `status: ${task.status || 'unknown'}`,
+    `coworker: ${task.coworkerName || task.coworkerId || '-'}`,
+    task.name ? `name: ${task.name}` : '',
+    task.description ? `description: ${truncate(task.description, 240)}` : '',
+    task.totalCredits != null ? `credits: ${task.totalCredits}` : '',
+    Array.isArray(details.jobs) ? `jobs: ${details.jobs.length}` : '',
+    Array.isArray(details.events) ? `events: ${details.events.length}` : '',
+    Array.isArray(details.events) && details.events.length > 0
+      ? `latest event: ${truncate(details.events[details.events.length - 1]?.comment || details.events[details.events.length - 1]?.message || details.events[details.events.length - 1]?.status || details.events[details.events.length - 1]?.id, 160)}`
+      : '',
+    Array.isArray(details.detailsErrors) && details.detailsErrors.length > 0
+      ? `detail errors: ${details.detailsErrors.map(err => err.resource).join(', ')}`
+      : ''
   ]);
+}
+
+function printEvents(stdout, events) {
+  if (events.length === 0) {
+    writeText(stdout, ['No events found.']);
+    return;
+  }
+
+  const lines = ['Events'];
+  for (const event of events) {
+    lines.push(`${event.id || '(event)'}`);
+    if (event.createdAt) lines.push(`  created: ${formatDate(event.createdAt)}`);
+    if (event.status) lines.push(`  status: ${event.status}`);
+    if (event.type) lines.push(`  type: ${event.type}`);
+    if (event.comment || event.message) lines.push(`  ${truncate(event.comment || event.message, 220)}`);
+  }
+
+  writeText(stdout, lines);
 }
 
 function printCoworkerRegistration(stdout, coworker, apiKey) {
@@ -404,6 +520,7 @@ async function handleDiscoverCommand(args, io, {signal} = {}) {
     commands: [
       'agents list', 'agents hire',
       'coworkers list', 'coworkers register', 'coworkers update', 'coworkers api-key', 'coworkers me',
+      'tasks list', 'tasks create', 'tasks get', 'tasks events', 'tasks jobs', 'tasks comment',
       'jobs list', 'jobs get'
     ],
     agents: agents.map(a => ({
@@ -445,7 +562,7 @@ async function handleDiscoverCommand(args, io, {signal} = {}) {
       `Jobs (${jobs.length}):`,
       ...jobs.map(j => `  ${j.name || j.id} [${j.id}] — ${j.status || 'unknown'}`),
       '',
-      'Commands: agents list, agents hire, coworkers list, coworkers register, coworkers update, coworkers api-key, coworkers me, jobs list, jobs get'
+      'Commands: agents list, agents hire, coworkers list, coworkers register, coworkers update, coworkers api-key, coworkers me, tasks list, tasks create, tasks get, tasks events, tasks jobs, tasks comment, jobs list, jobs get'
     ];
 
     if (errors.length > 0) {
@@ -651,6 +768,205 @@ async function handleCoworkersCommand(args, io, {signal} = {}) {
   throw new Error(`Unknown coworkers subcommand: ${subcommand}`);
 }
 
+async function collectTaskDetails(taskId, {signal} = {}) {
+  const [eventsResult, jobsResult] = await Promise.allSettled([
+    fetchTaskEvents(taskId, {signal}),
+    fetchTaskJobs(taskId, {signal})
+  ]);
+  const detailsErrors = [];
+  const details = {};
+
+  if (eventsResult.status === 'fulfilled') {
+    details.events = eventsResult.value.events;
+  } else {
+    detailsErrors.push({resource: 'events', message: eventsResult.reason?.message || 'fetch failed'});
+  }
+
+  if (jobsResult.status === 'fulfilled') {
+    details.jobs = jobsResult.value.jobs;
+  } else {
+    detailsErrors.push({resource: 'jobs', message: jobsResult.reason?.message || 'fetch failed'});
+  }
+
+  if (detailsErrors.length > 0) {
+    details.detailsErrors = detailsErrors;
+  }
+
+  return details;
+}
+
+async function collectJobDetails(jobId, {signal} = {}) {
+  const [eventsResult, filesResult, linksResult, inputRequestResult] = await Promise.allSettled([
+    fetchJobEvents(jobId, {signal}),
+    fetchJobFiles(jobId, {signal}),
+    fetchJobLinks(jobId, {signal}),
+    fetchJobInputRequest(jobId, {signal})
+  ]);
+  const detailsErrors = [];
+  const details = {};
+
+  if (eventsResult.status === 'fulfilled') {
+    details.events = eventsResult.value.events;
+  } else {
+    detailsErrors.push({resource: 'events', message: eventsResult.reason?.message || 'fetch failed'});
+  }
+
+  if (filesResult.status === 'fulfilled') {
+    details.files = filesResult.value.files;
+  } else {
+    detailsErrors.push({resource: 'files', message: filesResult.reason?.message || 'fetch failed'});
+  }
+
+  if (linksResult.status === 'fulfilled') {
+    details.links = linksResult.value.links;
+  } else {
+    detailsErrors.push({resource: 'links', message: linksResult.reason?.message || 'fetch failed'});
+  }
+
+  if (inputRequestResult.status === 'fulfilled') {
+    details.inputRequest = inputRequestResult.value.inputRequest;
+  } else {
+    detailsErrors.push({resource: 'inputRequest', message: inputRequestResult.reason?.message || 'fetch failed'});
+  }
+
+  if (detailsErrors.length > 0) {
+    details.detailsErrors = detailsErrors;
+  }
+
+  return details;
+}
+
+async function handleTasksCommand(args, io, {signal} = {}) {
+  const subcommand = args._[1];
+  const jsonOutput = isJsonOutput(args);
+
+  if (!subcommand || subcommand === 'list') {
+    const limit = parsePositiveInteger(getOption(args, 'limit'), {label: '--limit'});
+    const {tasks} = await fetchTasks({
+      q: getOption(args, 'search', 'q'),
+      status: getOption(args, 'status'),
+      scope: getOption(args, 'scope'),
+      coworkerId: getOption(args, 'coworker-id'),
+      take: limit,
+      signal
+    });
+    const filtered = Number.isInteger(limit) ? tasks.slice(0, limit) : tasks;
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {tasks: filtered});
+    } else {
+      printTaskList(io.stdout, filtered);
+    }
+    return 0;
+  }
+
+  if (subcommand === 'create') {
+    const coworkerId = getOption(args, 'coworker-id');
+    const description = getOption(args, 'description', 'desc');
+
+    if (!coworkerId) {
+      throw new Error('--coworker-id is required for `tasks create`');
+    }
+
+    if (!description) {
+      throw new Error('--description is required for `tasks create`');
+    }
+
+    const {task} = await createTask({
+      coworkerId,
+      description,
+      name: getOption(args, 'name'),
+      status: parseTaskCreateStatus(getOption(args, 'status'))
+    }, {signal});
+    const details = await collectTaskDetails(task.id, {signal});
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {task, ...details});
+    } else {
+      printTask(io.stdout, task, details);
+    }
+    return 0;
+  }
+
+  if (subcommand === 'get') {
+    const taskId = args._[2] || getOption(args, 'id', 'task-id');
+    if (!taskId) {
+      throw new Error('task id is required for `tasks get`');
+    }
+
+    const {task} = await fetchTask(taskId, {signal});
+    const details = await collectTaskDetails(taskId, {signal});
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {task, ...details});
+    } else {
+      printTask(io.stdout, task, details);
+    }
+    return 0;
+  }
+
+  if (subcommand === 'events') {
+    const taskId = args._[2] || getOption(args, 'id', 'task-id');
+    if (!taskId) {
+      throw new Error('task id is required for `tasks events`');
+    }
+
+    const {events} = await fetchTaskEvents(taskId, {signal});
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {events});
+    } else {
+      printEvents(io.stdout, events);
+    }
+    return 0;
+  }
+
+  if (subcommand === 'jobs') {
+    const taskId = args._[2] || getOption(args, 'id', 'task-id');
+    if (!taskId) {
+      throw new Error('task id is required for `tasks jobs`');
+    }
+
+    const {jobs} = await fetchTaskJobs(taskId, {signal});
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {jobs});
+    } else {
+      printJobList(io.stdout, jobs);
+    }
+    return 0;
+  }
+
+  if (subcommand === 'comment') {
+    const taskId = args._[2] || getOption(args, 'id', 'task-id');
+    const comment = getOption(args, 'comment');
+    const status = getOption(args, 'status');
+
+    if (!taskId) {
+      throw new Error('task id is required for `tasks comment`');
+    }
+
+    if (!comment && !status) {
+      throw new Error('--comment or --status is required for `tasks comment`');
+    }
+
+    const {event} = await createTaskEvent(taskId, {comment, status}, {signal});
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {event});
+    } else {
+      writeText(io.stdout, [
+        `Created task event ${event?.id || ''}`.trim(),
+        status ? `status: ${status}` : '',
+        comment ? `comment: ${truncate(comment, 220)}` : ''
+      ]);
+    }
+    return 0;
+  }
+
+  throw new Error(`Unknown tasks subcommand: ${subcommand}`);
+}
+
 async function handleJobsCommand(args, io, {signal} = {}) {
   const subcommand = args._[1];
   const jsonOutput = isJsonOutput(args);
@@ -675,11 +991,14 @@ async function handleJobsCommand(args, io, {signal} = {}) {
     }
 
     const {job} = await fetchJob(jobId, {signal});
+    const details = args.details === true || args.details === 'true'
+      ? await collectJobDetails(jobId, {signal})
+      : {};
 
     if (jsonOutput) {
-      writeJson(io.stdout, {job});
+      writeJson(io.stdout, {job, ...details});
     } else {
-      printJob(io.stdout, job);
+      printJob(io.stdout, job, details);
     }
     return 0;
   }
@@ -726,6 +1045,10 @@ export async function runCli(argv, io = {}) {
 
     if (command === 'coworkers') {
       return await handleCoworkersCommand(args, {stdout, stderr}, {signal: controller.signal});
+    }
+
+    if (command === 'tasks') {
+      return await handleTasksCommand(args, {stdout, stderr}, {signal: controller.signal});
     }
 
     if (command === 'jobs') {

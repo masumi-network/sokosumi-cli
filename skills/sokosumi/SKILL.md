@@ -12,7 +12,7 @@ Sokosumi is an AI agent marketplace. This skill lets any autonomous agent (Claud
 
 If you need packaging or install details for the `skills` CLI or Claude global installs, read `references/distribution.md`.
 
-Related focused skills in this repo: `hannah`, `elena`, `research`, `market`, `agents`, `jobs`, and `tasks`. Use them when the user invokes that narrower workflow directly.
+Related focused skills in this repo: `hannah`, `elena`, `research`, `market`, `agents`, `jobs`, `tasks`, and `watch`. Use them when the user invokes that narrower workflow directly.
 
 ## Install this skill
 
@@ -27,13 +27,14 @@ npx skills add https://github.com/masumi-network/sokosumi-cli --skill hannah
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill elena
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill research
 npx skills add https://github.com/masumi-network/sokosumi-cli --skill market
+npx skills add https://github.com/masumi-network/sokosumi-cli --skill watch
 ```
 
 ## Quick Start for Agents
 
 1. Get an API key from the user (see Authentication Flow below).
 2. Run `sokosumi agents list --api-key "$KEY" --json` to browse available agents.
-3. Hire, register coworkers, and monitor jobs using the CLI commands below.
+3. Hire, register coworkers, create tasks, and monitor work using the CLI commands below.
 
 That is the entire integration. No TUI, no browser, no interactive prompts.
 
@@ -124,7 +125,22 @@ sokosumi coworkers me --auth-token "$COWORKER_TOKEN" --json
 sokosumi jobs list --json
 
 # Get details of a specific job
-sokosumi jobs get job_123 --json
+sokosumi jobs get job_123 --details --json
+```
+
+### Tasks
+
+```bash
+# List tasks
+sokosumi tasks list --json
+
+# Create a READY coworker task
+sokosumi tasks create --coworker-id cow_123 --name "Task title" --description "Task brief" --status READY --json
+
+# Get task details, events, or linked jobs
+sokosumi tasks get task_123 --json
+sokosumi tasks events task_123 --json
+sokosumi tasks jobs task_123 --json
 ```
 
 ### Typical agent workflow
@@ -137,7 +153,7 @@ sokosumi agents list --search "writing" --api-key "$KEY" --json
 sokosumi agents hire agent_123 --input-json '{"prompt":"Write a blog post"}' --max-credits 25 --api-key "$KEY" --json
 
 # 3. Monitor the job
-sokosumi jobs get job_456 --api-key "$KEY" --json
+sokosumi jobs get job_456 --details --api-key "$KEY" --json
 ```
 
 Use raw HTTP (`curl`) only when the CLI is unavailable or the endpoint is not exposed by the CLI yet.
@@ -222,14 +238,14 @@ Required payload shapes:
 4. Build `inputData` from that schema. Do not guess required fields.
 5. `POST /v1/agents/:agentId/jobs`.
 6. Keep the returned `job.id`.
-7. Monitor with `GET /v1/jobs/:jobId`, `GET /v1/jobs/:jobId/events`, `GET /v1/jobs/:jobId/files`, and `GET /v1/jobs/:jobId/links`.
+7. If the job is still running, start the `watch` skill with the job id so the user does not need to ask manually. For a manual check, use `sokosumi jobs get <job-id> --details --json`.
 8. If `GET /v1/jobs/:jobId/input-request` shows a pending request, ask the human for the missing data and submit it with `POST /v1/jobs/:jobId/inputs`.
 
 When operating for a human:
 
 - Ask for the task brief before choosing the agent.
 - Tell the human what required field is still missing if the schema is unclear.
-- After submission, keep the job id in context so you can monitor it reliably.
+- After submission, keep the job id in context and arm `watch` when it is still running.
 
 ## Coworker And Task Flow
 
@@ -238,7 +254,7 @@ When operating for a human:
 3. `POST /v1/tasks` with `status: "READY"` for immediate execution or `status: "DRAFT"` if the user wants to stage it.
 4. When adding agents to the task, fetch each agent's input schema first.
 5. `POST /v1/tasks/:taskId/jobs` for each agent job.
-6. Monitor progress with `GET /v1/tasks/:taskId` and `GET /v1/tasks/:taskId/events`.
+6. If the task is READY and still running, start the `watch` skill with the task id. For manual checks, use `sokosumi tasks get <task-id> --json` and `sokosumi tasks events <task-id> --json`.
 7. If needed, add status/comments via `POST /v1/tasks/:taskId/events`.
 
 When operating for a human:
@@ -252,7 +268,7 @@ For direct agent hires:
 
 1. Use `GET /v1/jobs/:jobId`.
 2. Read status, result text, files, links, and events.
-3. If the job is still running, report that clearly and check again later.
+3. If the job is still running, start the `watch` skill so the agent checks again automatically.
 
 For coworker tasks:
 

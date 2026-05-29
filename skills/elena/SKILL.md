@@ -27,21 +27,19 @@ sokosumi discover --api-key "$SOKOSUMI_API_KEY" --json
 sokosumi coworkers list --search elena --capability tasks --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-3. If the user wants Elena to coordinate work, create a READY task via the HTTP API:
+3. If the user wants Elena to coordinate work, create a READY task:
 
 ```bash
-API_BASE="${SOKOSUMI_API_URL:-https://api.sokosumi.com}"
-curl -sS "$API_BASE/v1/tasks" \
-  -H "Authorization: Bearer $SOKOSUMI_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Short task title","description":"Full Elena brief","coworkerId":"coworker_id","status":"READY"}'
+sokosumi tasks create --coworker-id coworker_id --name "Short task title" --description "Full Elena brief" --status READY --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
 4. If the user asks about jobs, use:
 
 ```bash
 sokosumi jobs list --api-key "$SOKOSUMI_API_KEY" --json
-sokosumi jobs get job_id --api-key "$SOKOSUMI_API_KEY" --json
+sokosumi jobs get job_id --details --api-key "$SOKOSUMI_API_KEY" --json
 ```
 
-Return concrete ids and next actions. Prefer Elena for broad coordination; use direct agent hires only for narrow single-deliverable work.
+5. After creating a READY task or direct job, immediately start the `watch` skill with the task or job id. Do not wait for the work to finish.
+
+Return concrete ids and say what is being watched. Prefer Elena for broad coordination; use direct agent hires only for narrow single-deliverable work.
