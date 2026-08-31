@@ -2,7 +2,7 @@ import React, {useEffect, useState, useMemo} from 'react';
 import {Box, Text, useApp, useInput} from 'ink';
 import SelectInput from './components/select-input.mjs';
 import TextInput from './components/text-input.mjs';
-import {loadEnvFromLocalFile, getApiKeyFromEnv} from './utils/env.mjs';
+import {loadEnvFromLocalFile} from './utils/env.mjs';
 import {interpretUserRequest} from './utils/nl.mjs';
 import AnimatedLogo from './components/animated-logo.mjs';
 import PixelLoader from './components/pixel-loader.mjs';
@@ -21,6 +21,7 @@ import DashboardView from './views/dashboard-view.mjs';
 import TaskDetailsView from './views/task-details-view.mjs';
 import AuthSetupView from './views/auth-setup-view.mjs';
 import {getAuthManager} from './auth/auth-manager.mjs';
+import {resolveInitialAuth, selectBootRoute} from './auth/bootstrap.mjs';
 
 const BRAND_HEX = '#7F00FF'; // RGB(127,0,255)
 
@@ -507,25 +508,30 @@ function MainMenu() {
 }
 
 export default function App() {
-  const [stage, setStage] = useState('boot'); // boot -> auth|menu
   const [showLogo, setShowLogo] = useState(true);
   const [hasAuth, setHasAuth] = useState(false);
+  const [authResolved, setAuthResolved] = useState(false);
 
   useEffect(() => {
+    let aborted = false;
     loadEnvFromLocalFile();
-    const key = getApiKeyFromEnv();
     const authManager = getAuthManager();
     authManager.loadCredentials();
-    setHasAuth(Boolean(key) || authManager.isAuthenticated());
+    (async () => {
+      const authorized = await resolveInitialAuth({authManager});
+      if (!aborted) {
+        setHasAuth(authorized);
+        setAuthResolved(true);
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
   }, []);
 
-  useEffect(() => {
-    if (!showLogo) {
-      setStage(hasAuth ? 'menu' : 'auth');
-    }
-  }, [showLogo, hasAuth]);
+  const route = selectBootRoute({showLogo, authResolved, hasAuth});
 
-  if (showLogo) {
+  if (route === 'logo') {
     return React.createElement(
       Box,
       {flexDirection: 'column'},
@@ -534,12 +540,18 @@ export default function App() {
     );
   }
 
-  if (stage === 'auth') {
+  if (route === 'boot') {
+    return React.createElement(
+      Box,
+      {flexDirection: 'column'},
+      React.createElement(ClearScreen),
+      React.createElement(PixelLoader, {label: 'Checking your session…'})
+    );
+  }
+
+  if (route === 'auth') {
     return React.createElement(AuthSetupView, {
-      onDone: () => {
-        setHasAuth(true);
-        setStage('menu');
-      }
+      onDone: () => setHasAuth(true)
     });
   }
 

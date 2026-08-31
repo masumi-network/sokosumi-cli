@@ -84,6 +84,7 @@ export async function fetchCurrentCoworker({signal} = {}) {
 export async function createCoworker(data = {}, {signal} = {}) {
   const payload = {
     name: data?.name ? String(data.name).trim() : '',
+    vendorId: data?.vendorId != null ? String(data.vendorId).trim() || undefined : undefined,
     caption: data?.caption != null ? String(data.caption).trim() || null : undefined,
     company: data?.company != null ? String(data.company).trim() || null : undefined,
     companyLogo: data?.companyLogo != null ? String(data.companyLogo).trim() || null : undefined,

@@ -31,7 +31,7 @@ npx skills add https://github.com/masumi-network/sokosumi-cli --skill watch
 ### What the agent gets after install
 
 - Full CLI command reference (agents, coworkers, tasks, jobs)
-- Authentication flow (just needs an API key from the user)
+- Authentication flow for browser OAuth in the TUI and tokens or API keys in headless mode
 - API endpoint map for direct HTTP when needed
 - Decision framework: when to use direct agent hire vs coworker tasks, plus background watching for long-running work
 - Mainnet by default, preprod support via `--preprod` flag
@@ -57,7 +57,7 @@ sokosumi jobs get job_456 --details --api-key "$KEY" --json
 - Explore coworkers for multi-agent workflows
 - Create tasks and add jobs to them
 - Check job and task status from the terminal
-- Sign in with a browser magic link or save an API key locally
+- Sign in with browser OAuth or save an API key locally
 - Use menu navigation or natural-language shortcuts from the home screen
 - Run non-interactive agent and coworker workflows for automation
 - Mainnet and preprod environment support
@@ -93,14 +93,37 @@ sokosumi agents hire agent_123 \
   --max-credits 25 \
   --json
 
-# Register a coworker and mint a dedicated coworker bearer token
+# `vendors list` is a global directory with no authorization signal.
+# `vendors me` shows vendors you belong to, with your role.
+sokosumi vendors list --json
+sokosumi vendors me --json
+
+# Register a coworker. Platform-admin key required; a non-admin key returns 403.
+# vendorId is mandatory. Use a vendorId the human gave you, or one from `vendors me`
+# where you hold admin. Never auto-pick a vendorId from the global `vendors list`;
+# if you have no authorized vendorId, stop and ask which vendor to register under.
 sokosumi coworkers register \
   --name "Nexus" \
+  --vendor-id "<human-provided-vendor-id>" \
   --base-url "https://nexus.example.com/v1" \
   --capability chat \
   --capability tasks \
-  --channel email=ops@example.com \
-  --create-api-key \
+  --json
+# A new coworker is not whitelisted; list it with `coworkers list --scope all --json`.
+
+# Connect an existing Coworker to a provider
+sokosumi coworkers connect cow_123 \
+  --organization-id org_123 \
+  --base-url "https://responses.example.com/v1" \
+  --idempotency-key "connect_2026_08_28_001" \
+  --json
+
+# Read the provider key from stdin. The CLI never accepts it as an argument.
+printf '%s' "$PROVIDER_API_KEY" | sokosumi coworkers connect cow_123 \
+  --organization-id org_123 \
+  --base-url "https://responses.example.com/v1" \
+  --idempotency-key "connect_2026_08_28_001" \
+  --provider-api-key-stdin \
   --json
 
 # Update a coworker
@@ -142,30 +165,21 @@ For automation, the CLI still respects existing env and local config resolution:
 - `SOKOSUMI_API_KEY`
 - `SOKOSUMI_AUTH_TOKEN`
 - `SOKOSUMI_API_URL`
+- `SOKOSUMI_OAUTH_CLIENT_ID`
+- `SOKOSUMI_PROVIDER_API_KEY`
 - `~/.sokosumi/config.json`
-- `~/.sokosumi/credentials.json`
 
 ## Authentication
 
-On first run, the CLI offers two sign-in paths:
+The TUI uses browser OAuth when `SOKOSUMI_OAUTH_CLIENT_ID` is set. Register the loopback redirect URI `http://127.0.0.1:53682/oauth/callback` for that client. The TUI opens the Sokosumi approval page, receives the authorization code on localhost, and stores access and refresh tokens in the OS keychain.
 
-- `Email me a sign-in link`
-- `Paste an API key`
+Headless commands use `SOKOSUMI_AUTH_TOKEN` or `SOKOSUMI_API_KEY`. Pass a one-shot value with `--auth-token` or `--api-key` when the process environment is not suitable.
 
-Local CLI state is stored in:
+Coworker connection requires a user credential and a provider API key. Set `SOKOSUMI_PROVIDER_API_KEY` or pipe it with `--provider-api-key-stdin`. The provider key is sent to Core for encrypted storage and is never accepted as a command-line argument.
 
-- `~/.sokosumi/config.json` for CLI config and saved API key
-- `~/.sokosumi/credentials.json` for auth tokens
+Core returns a one-time Coworker runtime key after connection. Headless commands print it in JSON output. Save it in the agent runtime secret store before the command exits.
 
-If you need custom local overrides, copy `.env.example` to `.env` and set the values you want to use.
-
-For headless automation today, prefer one of these:
-
-- a user API key
-- a user OAuth access token passed via `--auth-token`
-- a dedicated coworker bearer token created with `sokosumi coworkers api-key`
-
-Automated Better Auth CLI sign-in is not implemented in this repo yet. The likely future direction is first-party OAuth or device authorization for the CLI rather than trying to automate the browser Connections flow.
+If you need custom local overrides, copy `.env.example` to `.env` and set the values you want to use. OAuth tokens live in the OS keychain, not in a file on disk.
 
 ## Navigation
 

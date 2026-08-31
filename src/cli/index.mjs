@@ -1,10 +1,12 @@
 import {createRequire} from 'module';
+import {randomUUID} from 'node:crypto';
 import fsPromises from 'fs/promises';
 import {
   createTask,
   createTaskEvent,
   createAgentJob,
   createCoworker,
+  connectCoworker,
   createCoworkerApiKey,
   fetchAgentInputSchema,
   fetchAgents,
@@ -16,6 +18,8 @@ import {
   fetchJobInputRequest,
   fetchJobLinks,
   fetchJobs,
+  fetchVendors,
+  fetchMyVendors,
   fetchTask,
   fetchTaskEvents,
   fetchTaskJobs,
@@ -25,6 +29,7 @@ import {
 
 import {loadEnvFromLocalFile, DEFAULT_API_URL, PREPROD_API_URL} from '../utils/env.mjs';
 import {normalizeCapabilities} from '../utils/normalize.mjs';
+import {resolveSecret} from '../utils/secret-input.mjs';
 import {asArray, getOption, parseArgs} from './args.mjs';
 
 const require = createRequire(import.meta.url);
@@ -39,8 +44,11 @@ Usage:
   sokosumi discover [--json]
   sokosumi agents list [--search QUERY] [--limit N] [--json]
   sokosumi agents hire <agent-id> (--input-json JSON | --input-file PATH) [--name JOB_NAME] [--max-credits N] [--json]
+  sokosumi vendors list [--json]
+  sokosumi vendors me [--json]
   sokosumi coworkers list [--search QUERY] [--limit N] [--scope whitelisted|all|archived] [--capability chat|tasks] [--json]
-  sokosumi coworkers register --name NAME [--caption TEXT] [--company NAME] [--company-logo URL] [--url URL] [--base-url URL] [--description TEXT] [--image URL] [--priority N] [--capability chat|tasks] [--channel PROVIDER=VALUE] [--metadata-json JSON | --metadata-file PATH] [--create-api-key] [--api-key-name NAME] [--api-key-expires-at ISO] [--json]
+  sokosumi coworkers connect <coworker-id> --organization-id ID --base-url HTTPS_URL [--idempotency-key KEY] [--provider-api-key-stdin] [--json]
+  sokosumi coworkers register --name NAME --vendor-id VENDOR_ID [--caption TEXT] [--url URL] [--base-url URL] [--description TEXT] [--priority N] [--capability chat|tasks] [--channel PROVIDER=VALUE] [--metadata-json JSON | --metadata-file PATH] [--create-api-key] [--api-key-name NAME] [--api-key-expires-at ISO] [--json]
   sokosumi coworkers update <coworker-id> [--name NAME] [--caption TEXT] [--company NAME] [--company-logo URL] [--url URL] [--base-url URL] [--description TEXT] [--image URL] [--priority N] [--capability chat|tasks] [--channel PROVIDER=VALUE] [--metadata-json JSON | --metadata-file PATH] [--json]
   sokosumi coworkers api-key <coworker-id> [--name KEY_NAME] [--expires-at ISO] [--json]
   sokosumi coworkers me [--json]
@@ -223,6 +231,23 @@ function applyRuntimeOverrides(args) {
 
 function isJsonOutput(args) {
   return args.json === true || args.json === 'true';
+}
+
+async function resolveProviderApiKey(args, io) {
+  if (getOption(args, 'provider-api-key') !== undefined) {
+    throw new Error(
+      'Provider API key must come from SOKOSUMI_PROVIDER_API_KEY, --provider-api-key-stdin, or the hidden TTY prompt',
+    );
+  }
+
+  return resolveSecret({
+    env: process.env,
+    envName: 'SOKOSUMI_PROVIDER_API_KEY',
+    fromStdin: Boolean(getOption(args, 'provider-api-key-stdin')),
+    jsonOutput: isJsonOutput(args),
+    stdin: io.stdin || process.stdin,
+    stdout: io.stderr || process.stderr,
+  });
 }
 
 function writeJson(stdout, payload) {
@@ -519,7 +544,8 @@ async function handleDiscoverCommand(args, io, {signal} = {}) {
     capabilities: VALID_CAPABILITIES,
     commands: [
       'agents list', 'agents hire',
-      'coworkers list', 'coworkers register', 'coworkers update', 'coworkers api-key', 'coworkers me',
+      'vendors list', 'vendors me',
+      'coworkers list', 'coworkers connect', 'coworkers register', 'coworkers update', 'coworkers api-key', 'coworkers me',
       'tasks list', 'tasks create', 'tasks get', 'tasks events', 'tasks jobs', 'tasks comment',
       'jobs list', 'jobs get'
     ],
@@ -562,7 +588,7 @@ async function handleDiscoverCommand(args, io, {signal} = {}) {
       `Jobs (${jobs.length}):`,
       ...jobs.map(j => `  ${j.name || j.id} [${j.id}] — ${j.status || 'unknown'}`),
       '',
-      'Commands: agents list, agents hire, coworkers list, coworkers register, coworkers update, coworkers api-key, coworkers me, tasks list, tasks create, tasks get, tasks events, tasks jobs, tasks comment, jobs list, jobs get'
+      'Commands: agents list, agents hire, vendors list, vendors me, coworkers list, coworkers connect, coworkers register, coworkers update, coworkers api-key, coworkers me, tasks list, tasks create, tasks get, tasks events, tasks jobs, tasks comment, jobs list, jobs get'
     ];
 
     if (errors.length > 0) {
@@ -639,6 +665,59 @@ async function handleAgentsCommand(args, io, {signal} = {}) {
   throw new Error(`Unknown agents subcommand: ${subcommand}`);
 }
 
+function printVendorList(stdout, vendors) {
+  if (vendors.length === 0) {
+    writeText(stdout, ['No vendors available.']);
+    return;
+  }
+
+  const lines = ['Vendors'];
+  for (const vendor of vendors) {
+    lines.push(`${vendor.name || 'Unnamed'} [${vendor.id}]`);
+    if (vendor.slug) lines.push(`  slug: ${vendor.slug}`);
+  }
+  writeText(stdout, lines);
+}
+
+async function handleVendorsCommand(args, io, {signal} = {}) {
+  const subcommand = args._[1];
+  const jsonOutput = isJsonOutput(args);
+
+  if (!subcommand || subcommand === 'list') {
+    const {vendors} = await fetchVendors({signal});
+    const filtered = applyListFilters(vendors, {
+      search: getOption(args, 'search'),
+      limit: parsePositiveInteger(getOption(args, 'limit'), {label: '--limit'}),
+      fields: (vendor) => [vendor.id, vendor.slug, vendor.name]
+    });
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {vendors: filtered});
+    } else {
+      printVendorList(io.stdout, filtered);
+    }
+    return 0;
+  }
+
+  if (subcommand === 'me') {
+    const {vendors} = await fetchMyVendors({signal});
+    if (jsonOutput) {
+      writeJson(io.stdout, {vendors});
+    } else if (vendors.length === 0) {
+      writeText(io.stdout, ['You are not a member of any vendor.']);
+    } else {
+      const lines = ['Your vendor memberships'];
+      for (const vendor of vendors) {
+        lines.push(`${vendor.name || 'Unnamed'} [${vendor.id}] — role: ${vendor.role || 'unknown'}`);
+      }
+      writeText(io.stdout, lines);
+    }
+    return 0;
+  }
+
+  throw new Error(`Unknown vendors subcommand: ${subcommand}`);
+}
+
 async function handleCoworkersCommand(args, io, {signal} = {}) {
   const subcommand = args._[1];
   const jsonOutput = isJsonOutput(args);
@@ -677,8 +756,56 @@ async function handleCoworkersCommand(args, io, {signal} = {}) {
     return 0;
   }
 
+  if (subcommand === 'connect') {
+    const coworkerId = args._[2] || getOption(args, 'id', 'coworker-id');
+    if (!coworkerId) {
+      throw new Error('coworker id is required for `coworkers connect`');
+    }
+
+    const organizationId = getOption(args, 'organization-id', 'organizationId');
+    if (!organizationId) {
+      throw new Error('organization id is required for `coworkers connect`');
+    }
+
+    const baseURL = getOption(args, 'base-url', 'baseURL');
+    if (!baseURL) {
+      throw new Error('base URL is required for `coworkers connect`');
+    }
+
+    const providerApiKey = await resolveProviderApiKey(args, io);
+    const idempotencyKey = getOption(args, 'idempotency-key') ?? `cli_connect_${randomUUID()}`;
+    const {connection} = await connectCoworker(coworkerId, {
+      organizationId,
+      baseURL,
+      providerApiKey,
+      idempotencyKey,
+      signal
+    });
+    const runtimeKey = connection?.runtimeKey;
+    if (!runtimeKey?.token) {
+      throw new Error('Connection response did not include a one-time runtime key');
+    }
+
+    if (jsonOutput) {
+      writeJson(io.stdout, {connection});
+    } else {
+      writeText(io.stdout, [
+        `Connected coworker ${connection.coworkerId || coworkerId}`,
+        connection.workspaceId ? `workspace: ${connection.workspaceId}` : '',
+        `runtime key (shown once): ${runtimeKey.token}`,
+        runtimeKey.expiresAt ? `expires: ${runtimeKey.expiresAt}` : 'expires: not set'
+      ]);
+    }
+    return 0;
+  }
+
   if (subcommand === 'register') {
     const payload = await buildCoworkerCreatePayload(args);
+    const vendorId = getOption(args, 'vendor-id', 'vendorId');
+    if (!vendorId) {
+      throw new Error('vendor id is required for `coworkers register`. Pass the vendorId you are authorized to create under with --vendor-id. `sokosumi vendors list` shows platform vendor ids; creating a coworker needs a platform-admin key.');
+    }
+    payload.vendorId = vendorId;
     const shouldCreateApiKey = Boolean(getOption(args, 'create-api-key', 'with-api-key'));
     const {coworker} = await createCoworker(payload, {signal});
 
@@ -1011,6 +1138,7 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 export async function runCli(argv, io = {}) {
   const stdout = io.stdout || process.stdout;
   const stderr = io.stderr || process.stderr;
+  const stdin = io.stdin || process.stdin;
   const args = parseArgs(argv);
 
   if (args.version) {
@@ -1043,8 +1171,12 @@ export async function runCli(argv, io = {}) {
       return await handleAgentsCommand(args, {stdout, stderr}, {signal: controller.signal});
     }
 
+    if (command === 'vendors') {
+      return await handleVendorsCommand(args, {stdout, stderr}, {signal: controller.signal});
+    }
+
     if (command === 'coworkers') {
-      return await handleCoworkersCommand(args, {stdout, stderr}, {signal: controller.signal});
+      return await handleCoworkersCommand(args, {stdout, stderr, stdin}, {signal: controller.signal});
     }
 
     if (command === 'tasks') {

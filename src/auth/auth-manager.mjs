@@ -1,60 +1,52 @@
-import {
-  readCredentials,
-  writeCredentials,
-  clearCredentials,
-  hasStoredCredentials
-} from './token-store.mjs';
+import {getAuthBaseUrlFromEnv} from '../utils/env.mjs';
+import {refreshAccessToken} from './oauth.mjs';
+import {keychainCredentialStore} from './secure-store.mjs';
 
 const AUTH_TOKEN_ENV_NAME = 'SOKOSUMI_AUTH_TOKEN';
+const OAUTH_CLIENT_ID_ENV_NAME = 'SOKOSUMI_OAUTH_CLIENT_ID';
+const OAUTH_CLIENT_SECRET_ENV_NAME = 'SOKOSUMI_OAUTH_CLIENT_SECRET';
 
 /**
- * Authentication Manager - Handles token lifecycle and authentication state
+ * Authentication Manager - Handles token lifecycle and authentication state.
+ * Interactive OAuth credentials stay in the OS keychain.
  */
 export class AuthManager {
-  constructor() {
+  constructor({
+    credentialStore = keychainCredentialStore,
+    refreshTokenFn = refreshAccessToken,
+  } = {}) {
+    this.credentialStore = credentialStore;
+    this.refreshTokenFn = refreshTokenFn;
     this.credentials = null;
+    this.refreshPromise = null;
     this.loadCredentials();
   }
 
-  /**
-   * Loads credentials from disk
-   */
   loadCredentials() {
-    this.credentials = readCredentials();
+    this.credentials = this.credentialStore.read();
+    return this.credentials;
   }
 
-  /**
-   * Saves authentication credentials
-   * @param {Object} credentials - Credentials to store
-   * @param {string} credentials.authToken - Authentication token
-   * @param {string} [credentials.refreshToken] - Refresh token
-   * @param {string} [credentials.expiresAt] - ISO timestamp
-   * @param {string} [credentials.userId] - User ID
-   * @param {string} [credentials.email] - User email
-   */
   saveCredentials(credentials) {
+    if (!credentials || typeof credentials !== 'object' || !credentials.authToken) {
+      throw new TypeError('authToken is required');
+    }
+    this.credentialStore.write(credentials);
     this.credentials = credentials;
-    writeCredentials(credentials);
+    return credentials;
   }
 
-  /**
-   * Clears stored credentials and logs out
-   */
   logout() {
     this.credentials = null;
-    clearCredentials();
+    this.refreshPromise = null;
+    this.credentialStore.clear();
   }
 
-  /**
-   * Checks if user is authenticated (has valid credentials)
-   * @returns {boolean}
-   */
   isAuthenticated() {
     if (!this.credentials || !this.credentials.authToken) {
       return false;
     }
 
-    // Check if token is expired
     if (this.isTokenExpired()) {
       return false;
     }
@@ -62,20 +54,14 @@ export class AuthManager {
     return true;
   }
 
-  /**
-   * Checks if the stored token is expired
-   * @returns {boolean}
-   */
   isTokenExpired() {
     if (!this.credentials || !this.credentials.expiresAt) {
-      return false; // No expiry set, assume valid
+      return false;
     }
 
     try {
       const expiryDate = new Date(this.credentials.expiresAt);
       const now = new Date();
-
-      // Add 5 minute buffer before expiry
       const bufferMs = 5 * 60 * 1000;
       return now.getTime() > (expiryDate.getTime() - bufferMs);
     } catch (error) {
@@ -84,10 +70,6 @@ export class AuthManager {
     }
   }
 
-  /**
-   * Gets the current auth token
-   * @returns {string|null}
-   */
   getAuthToken() {
     const envToken = typeof process.env[AUTH_TOKEN_ENV_NAME] === 'string'
       ? process.env[AUTH_TOKEN_ENV_NAME].trim()
@@ -103,56 +85,71 @@ export class AuthManager {
     return this.credentials.authToken;
   }
 
-  /**
-   * Gets the refresh token
-   * @returns {string|null}
-   */
+  async getAuthTokenAsync({
+    authBaseUrl,
+    clientId,
+    clientSecret,
+  } = {}) {
+    const envToken = typeof process.env[AUTH_TOKEN_ENV_NAME] === 'string'
+      ? process.env[AUTH_TOKEN_ENV_NAME].trim()
+      : '';
+    if (envToken) return envToken;
+    if (this.isAuthenticated()) return this.credentials.authToken;
+
+    const refreshToken = this.getRefreshToken();
+    const resolvedClientId = String(
+      clientId || process.env[OAUTH_CLIENT_ID_ENV_NAME] || '',
+    ).trim();
+    if (!refreshToken || !resolvedClientId) return null;
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = (async () => {
+        const refreshed = await this.refreshTokenFn({
+          authBaseUrl: authBaseUrl || getAuthBaseUrlFromEnv(),
+          clientId: resolvedClientId,
+          clientSecret: clientSecret || process.env[OAUTH_CLIENT_SECRET_ENV_NAME],
+          refreshToken,
+        });
+        const nextCredentials = {
+          ...this.credentials,
+          ...refreshed,
+          refreshToken: refreshed.refreshToken || refreshToken,
+        };
+        this.saveCredentials(nextCredentials);
+        return nextCredentials.authToken;
+      })();
+    }
+
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
   getRefreshToken() {
     return this.credentials?.refreshToken || null;
   }
 
-  /**
-   * Gets the user ID
-   * @returns {string|null}
-   */
   getUserId() {
     return this.credentials?.userId || null;
   }
 
-  /**
-   * Gets the user email
-   * @returns {string|null}
-   */
   getUserEmail() {
     return this.credentials?.email || null;
   }
 
-  /**
-   * Checks if credentials are stored on disk
-   * @returns {boolean}
-   */
   hasStoredCredentials() {
-    return hasStoredCredentials();
+    return Boolean(this.credentialStore.read());
   }
 
-  /**
-   * Gets all credentials (for debugging)
-   * @returns {Object|null}
-   */
   getCredentials() {
     return this.credentials;
   }
 }
 
-/**
- * Singleton instance
- */
 let authManagerInstance = null;
 
-/**
- * Gets the singleton AuthManager instance
- * @returns {AuthManager}
- */
 export function getAuthManager() {
   if (!authManagerInstance) {
     authManagerInstance = new AuthManager();
