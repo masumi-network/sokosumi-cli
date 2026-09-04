@@ -69,7 +69,7 @@ export function getConnectionsUrl() {
 
 export function getOAuthClientsUrl() {
   ensureEnvLoaded();
-  return buildUrl(getWebBaseUrlFromEnv(), '/oauth/client');
+  return buildUrl(getWebBaseUrlFromEnv(), '/developer/oauth-clients');
 }
 
 export async function requestMagicLinkSignIn(email, {callbackUrl} = {}) {
