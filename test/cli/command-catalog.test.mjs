@@ -12,10 +12,7 @@ function outputBuffer() {
 const REQUIRED_COMMANDS = [
   'agents list',
   'agents hire',
-  'vendors list',
-  'vendors me',
   'coworkers list',
-  'coworkers connect',
   'coworkers register',
   'coworkers update',
   'coworkers api-key',

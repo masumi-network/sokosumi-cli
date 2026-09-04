@@ -93,37 +93,14 @@ sokosumi agents hire agent_123 \
   --max-credits 25 \
   --json
 
-# `vendors list` is a global directory with no authorization signal.
-# `vendors me` shows vendors you belong to, with your role.
-sokosumi vendors list --json
-sokosumi vendors me --json
-
-# Register a coworker. Platform-admin key required; a non-admin key returns 403.
-# vendorId is mandatory. Use a vendorId the human gave you, or one from `vendors me`
-# where you hold admin. Never auto-pick a vendorId from the global `vendors list`;
-# if you have no authorized vendorId, stop and ask which vendor to register under.
+# Register a coworker and mint a dedicated coworker bearer token
 sokosumi coworkers register \
   --name "Nexus" \
-  --vendor-id "<human-provided-vendor-id>" \
   --base-url "https://nexus.example.com/v1" \
   --capability chat \
   --capability tasks \
-  --json
-# A new coworker is not whitelisted; list it with `coworkers list --scope all --json`.
-
-# Connect an existing Coworker to a provider
-sokosumi coworkers connect cow_123 \
-  --organization-id org_123 \
-  --base-url "https://responses.example.com/v1" \
-  --idempotency-key "connect_2026_08_28_001" \
-  --json
-
-# Read the provider key from stdin. The CLI never accepts it as an argument.
-printf '%s' "$PROVIDER_API_KEY" | sokosumi coworkers connect cow_123 \
-  --organization-id org_123 \
-  --base-url "https://responses.example.com/v1" \
-  --idempotency-key "connect_2026_08_28_001" \
-  --provider-api-key-stdin \
+  --channel email=ops@example.com \
+  --create-api-key \
   --json
 
 # Update a coworker
@@ -166,7 +143,6 @@ For automation, the CLI still respects existing env and local config resolution:
 - `SOKOSUMI_AUTH_TOKEN`
 - `SOKOSUMI_API_URL`
 - `SOKOSUMI_OAUTH_CLIENT_ID`
-- `SOKOSUMI_PROVIDER_API_KEY`
 - `~/.sokosumi/config.json`
 
 ## Authentication
@@ -174,10 +150,6 @@ For automation, the CLI still respects existing env and local config resolution:
 The TUI uses browser OAuth when `SOKOSUMI_OAUTH_CLIENT_ID` is set. Register the loopback redirect URI `http://127.0.0.1:53682/oauth/callback` for that client. The TUI opens the Sokosumi approval page, receives the authorization code on localhost, and stores access and refresh tokens in the OS keychain.
 
 Headless commands use `SOKOSUMI_AUTH_TOKEN` or `SOKOSUMI_API_KEY`. Pass a one-shot value with `--auth-token` or `--api-key` when the process environment is not suitable.
-
-Coworker connection requires a user credential and a provider API key. Set `SOKOSUMI_PROVIDER_API_KEY` or pipe it with `--provider-api-key-stdin`. The provider key is sent to Core for encrypted storage and is never accepted as a command-line argument.
-
-Core returns a one-time Coworker runtime key after connection. Headless commands print it in JSON output. Save it in the agent runtime secret store before the command exits.
 
 If you need custom local overrides, copy `.env.example` to `.env` and set the values you want to use. OAuth tokens live in the OS keychain, not in a file on disk.
 

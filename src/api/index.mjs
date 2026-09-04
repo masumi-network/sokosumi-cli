@@ -13,7 +13,6 @@ export * from './models/agent-job.mjs';
 // Coworkers
 export * from './models/coworker.mjs';
 export * from './services/coworker-service.mjs';
-export * from './services/coworker-connection-service.mjs';
 
 // Tasks
 export * from './models/task.mjs';
@@ -22,9 +21,6 @@ export * from './services/task-service.mjs';
 // Categories
 export * from './models/category.mjs';
 export * from './services/category-service.mjs';
-
-// Vendors
-export * from './services/vendor-service.mjs';
 
 // Jobs (enhanced)
 export * from './services/job-service.mjs';

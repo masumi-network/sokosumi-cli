@@ -11,9 +11,6 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - browser OAuth (PKCE + loopback callback) sign-in for the TUI, with OS-keychain token storage and automatic refresh
 - first-run authentication chooser: `Approve sign-in in browser` (OAuth) or `Paste an API key`
-- `coworkers connect` to connect an existing coworker to an organization (`POST /v1/coworkers/connect`), returning a one-time runtime key
-- `vendors list` (platform vendor directory) and `vendors me` (caller memberships with role)
-- secure provider-key input for connect: environment variable, `--provider-api-key-stdin`, or a hidden TTY prompt; never a command argument
 - coworker browsing, task creation, task details, and live dashboard flows
 - improved direct job review with files, links, and clearer status handling
 - repo-local Sokosumi workflow skill at `skills/sokosumi/SKILL.md`
@@ -24,7 +21,6 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - store OAuth access and refresh tokens in the OS keychain (previously `~/.sokosumi/credentials.json`)
 - gate the TUI boot on the resolved auth check, so a pending refresh does not flash sign-in or the menu
-- `coworkers register` now sends the required `vendorId` and adds `--vendor-id` (Core rejects create without it)
 - moved interactive CLI config from repo-local `.env` writes to `~/.sokosumi/config.json`
 - changed API auth handling to use `Authorization: Bearer` for both tokens and dedicated API keys
 - renamed the old "Hired Agents" workflow to `My Jobs`
