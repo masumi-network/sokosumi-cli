@@ -6,6 +6,25 @@ The app is built with React and Ink and is intended to be a lightweight way to w
 
 ![Sokosumi CLI Screenshot](./screenshot.png)
 
+## Install (macOS)
+
+From a clone of this repo:
+
+```bash
+brew install --HEAD ./Formula/sokosumi.rb
+```
+
+Create an OAuth client at [Developer → OAuth clients](https://app.sokosumi.com/developer/oauth-clients) with redirect URI `http://127.0.0.1:53682/oauth/callback`. Enable **Sokosumi API** and **offline access**, then:
+
+```bash
+export SOKOSUMI_OAUTH_CLIENT_ID='your-client-id'
+sokosumi
+```
+
+The TUI reuses the marketplace Better Auth flow: web sign-in or sign-up, then consent. After approval, tokens go to the macOS Keychain and you land on the live Dashboard. Press Esc for the main menu.
+
+Requires Node.js 18+ (Homebrew installs it as a dependency). Linux and Windows: use `SOKOSUMI_API_KEY` or `SOKOSUMI_AUTH_TOKEN` with headless commands — browser OAuth is macOS-only.
+
 ## Give This to Your Agent
 
 One command. Your agent installs the Sokosumi skill and immediately knows how to browse the marketplace, hire agents, register coworkers, and monitor jobs.
@@ -31,7 +50,7 @@ npx skills add https://github.com/masumi-network/sokosumi-cli --skill watch
 ### What the agent gets after install
 
 - Full CLI command reference (agents, coworkers, tasks, jobs)
-- Authentication flow (just needs an API key from the user)
+- Authentication flow for browser OAuth on macOS and tokens or API keys in headless mode
 - API endpoint map for direct HTTP when needed
 - Decision framework: when to use direct agent hire vs coworker tasks, plus background watching for long-running work
 - Mainnet by default, preprod support via `--preprod` flag
@@ -57,7 +76,7 @@ sokosumi jobs get job_456 --details --api-key "$KEY" --json
 - Explore coworkers for multi-agent workflows
 - Create tasks and add jobs to them
 - Check job and task status from the terminal
-- Sign in with a browser magic link or save an API key locally
+- Sign in with browser OAuth on macOS or save an API key locally
 - Use menu navigation or natural-language shortcuts from the home screen
 - Run non-interactive agent and coworker workflows for automation
 - Mainnet and preprod environment support
@@ -66,6 +85,7 @@ sokosumi jobs get job_456 --details --api-key "$KEY" --json
 
 - Node.js 18 or newer
 - `pnpm` via Corepack (`packageManager: pnpm@10.33.0`)
+- macOS for browser OAuth. Linux and Windows use headless tokens or API keys.
 
 ## Local Development
 
@@ -142,30 +162,18 @@ For automation, the CLI still respects existing env and local config resolution:
 - `SOKOSUMI_API_KEY`
 - `SOKOSUMI_AUTH_TOKEN`
 - `SOKOSUMI_API_URL`
+- `SOKOSUMI_OAUTH_CLIENT_ID`
 - `~/.sokosumi/config.json`
-- `~/.sokosumi/credentials.json`
 
 ## Authentication
 
-On first run, the CLI offers two sign-in paths:
+On macOS, the TUI uses the same OAuth path as the Sokosumi monorepo CLI (`apps/cli`): PKCE + loopback to Core `/auth/oauth2/*`, with web `/signin` and `/oauth/consent`. Set `SOKOSUMI_OAUTH_CLIENT_ID` to a client created under Developer → OAuth clients (redirect `http://127.0.0.1:53682/oauth/callback`). Access and refresh tokens are stored in the macOS Keychain. Authenticated boots open the Dashboard.
 
-- `Email me a sign-in link`
-- `Paste an API key`
+Linux and Windows users must use `SOKOSUMI_AUTH_TOKEN` or `SOKOSUMI_API_KEY`. Browser OAuth is disabled on those platforms because the CLI has no secure credential store for them.
 
-Local CLI state is stored in:
+Headless commands use `SOKOSUMI_AUTH_TOKEN` or `SOKOSUMI_API_KEY`. Pass a one-shot value with `--auth-token` or `--api-key` when the process environment is not suitable.
 
-- `~/.sokosumi/config.json` for CLI config and saved API key
-- `~/.sokosumi/credentials.json` for auth tokens
-
-If you need custom local overrides, copy `.env.example` to `.env` and set the values you want to use.
-
-For headless automation today, prefer one of these:
-
-- a user API key
-- a user OAuth access token passed via `--auth-token`
-- a dedicated coworker bearer token created with `sokosumi coworkers api-key`
-
-Automated Better Auth CLI sign-in is not implemented in this repo yet. The likely future direction is first-party OAuth or device authorization for the CLI rather than trying to automate the browser Connections flow.
+If you need custom local overrides, copy `.env.example` to `.env` and set the values you want to use. OAuth tokens live in the macOS Keychain, not in a file on disk.
 
 ## Navigation
 
@@ -252,6 +260,7 @@ After installation, Claude Code, Cursor, Windsurf, and other compatible tools au
 - `STATUS.md` tracks current progress, open work, and recent decisions
 - `IMPLEMENTATION_PLAN.md` captures the remaining roadmap and architecture direction
 - `IMPLEMENTATION_SUMMARY.md` provides a concise historical summary of the upgrade work
+- `Formula/sokosumi.rb` Homebrew HEAD formula
 
 ## Links
 

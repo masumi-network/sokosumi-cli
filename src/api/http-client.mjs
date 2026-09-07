@@ -2,7 +2,6 @@ import {getApiBaseUrlFromEnv, getApiKeyFromEnv, loadEnvFromLocalFile} from '../u
 import {getAuthManager} from '../auth/auth-manager.mjs';
 
 function ensureEnvLoaded() {
-  // Idempotent call; dotenv.config only populates once
   loadEnvFromLocalFile();
 }
 
@@ -17,49 +16,69 @@ function buildUrl(pathname) {
 }
 
 /**
- * Gets authentication headers (token or API key)
- * Prefers auth token over API key if both are available
- * @returns {Object} Headers object
+ * Gets authentication headers.
+ * An explicit authToken is used for Coworker runtime calls so a stored user
+ * token cannot be selected by accident.
+ * If OAuth refresh throws (network/outage), fall through to a configured API key.
  */
-function getAuthHeaders() {
-  const authManager = getAuthManager();
-  const authToken = authManager.getAuthToken();
-
-  // Prefer auth token over API key
-  if (authToken) {
+export async function getAuthHeaders({
+  authToken,
+  apiKey,
+  authManager = getAuthManager(),
+  resolveApiKey = getApiKeyFromEnv,
+} = {}) {
+  const explicitToken = typeof authToken === 'string' ? authToken.trim() : '';
+  if (explicitToken) {
     return {
-      'authorization': `Bearer ${authToken}`,
+      authorization: `Bearer ${explicitToken}`,
       'content-type': 'application/json',
     };
   }
 
-  // Fall back to API key - API requires Bearer token authentication
-  // per OpenAPI spec: "Supports Better Auth user credentials and dedicated coworker bearer API keys"
-  const apiKey = getApiKeyFromEnv();
-  if (apiKey) {
+  const explicitApiKey = typeof apiKey === 'string' ? apiKey.trim() : '';
+  if (explicitApiKey) {
     return {
-      'authorization': `Bearer ${apiKey}`,
+      authorization: `Bearer ${explicitApiKey}`,
       'content-type': 'application/json',
     };
   }
 
-  // No authentication available
+  let storedAuthToken = null;
+  try {
+    storedAuthToken = await authManager.getAuthTokenAsync();
+  } catch {
+    // Refresh can fail transiently; try the configured API key next.
+  }
+  if (storedAuthToken) {
+    return {
+      authorization: `Bearer ${storedAuthToken}`,
+      'content-type': 'application/json',
+    };
+  }
+
+  const configuredApiKey = resolveApiKey();
+  if (configuredApiKey) {
+    return {
+      authorization: `Bearer ${configuredApiKey}`,
+      'content-type': 'application/json',
+    };
+  }
+
   throw new Error(
-    'No authentication found. Start the CLI and choose Authentication, or set SOKOSUMI_API_KEY in your environment.'
+    'No authentication found. Start the CLI and choose Authentication, or set SOKOSUMI_API_KEY or SOKOSUMI_AUTH_TOKEN.',
   );
 }
 
-export async function httpGet(pathname, {signal} = {}) {
+async function request(method, pathname, body, {signal, authToken, apiKey} = {}) {
   ensureEnvLoaded();
   const url = buildUrl(pathname);
-  const headers = getAuthHeaders();
+  const headers = await getAuthHeaders({authToken, apiKey});
+  const options = {method, headers, signal};
+  if (body !== undefined) {
+    options.body = JSON.stringify(body);
+  }
 
-  const res = await fetch(url, {
-    method: 'GET',
-    headers,
-    signal,
-  });
-
+  const res = await fetch(url, options);
   const text = await res.text();
   let json;
   try {
@@ -82,104 +101,18 @@ export async function httpGet(pathname, {signal} = {}) {
   return json;
 }
 
-export async function httpPost(pathname, body, {signal} = {}) {
-  ensureEnvLoaded();
-  const url = buildUrl(pathname);
-  const headers = getAuthHeaders();
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: body != null ? JSON.stringify(body) : undefined,
-    signal,
-  });
-
-  const text = await res.text();
-  let json;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch (err) {
-    const error = new Error('Failed to parse JSON response');
-    error.cause = err;
-    error.status = res.status;
-    error.body = text;
-    throw error;
-  }
-
-  if (!res.ok) {
-    const error = new Error(`Request failed with status ${res.status}`);
-    error.status = res.status;
-    error.body = json ?? text;
-    throw error;
-  }
-
-  return json;
+export function httpGet(pathname, options = {}) {
+  return request('GET', pathname, undefined, options);
 }
 
-export async function httpPatch(pathname, body, {signal} = {}) {
-  ensureEnvLoaded();
-  const url = buildUrl(pathname);
-  const headers = getAuthHeaders();
-
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers,
-    body: body != null ? JSON.stringify(body) : undefined,
-    signal,
-  });
-
-  const text = await res.text();
-  let json;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch (err) {
-    const error = new Error('Failed to parse JSON response');
-    error.cause = err;
-    error.status = res.status;
-    error.body = text;
-    throw error;
-  }
-
-  if (!res.ok) {
-    const error = new Error(`Request failed with status ${res.status}`);
-    error.status = res.status;
-    error.body = json ?? text;
-    throw error;
-  }
-
-  return json;
+export function httpPost(pathname, body, options = {}) {
+  return request('POST', pathname, body, options);
 }
 
-export async function httpDelete(pathname, {signal} = {}) {
-  ensureEnvLoaded();
-  const url = buildUrl(pathname);
-  const headers = getAuthHeaders();
-
-  const res = await fetch(url, {
-    method: 'DELETE',
-    headers,
-    signal,
-  });
-
-  const text = await res.text();
-  let json;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch (err) {
-    const error = new Error('Failed to parse JSON response');
-    error.cause = err;
-    error.status = res.status;
-    error.body = text;
-    throw error;
-  }
-
-  if (!res.ok) {
-    const error = new Error(`Request failed with status ${res.status}`);
-    error.status = res.status;
-    error.body = json ?? text;
-    throw error;
-  }
-
-  return json;
+export function httpPatch(pathname, body, options = {}) {
+  return request('PATCH', pathname, body, options);
 }
 
+export function httpDelete(pathname, options = {}) {
+  return request('DELETE', pathname, undefined, options);
+}
