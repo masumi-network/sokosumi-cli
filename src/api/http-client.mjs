@@ -19,8 +19,14 @@ function buildUrl(pathname) {
  * Gets authentication headers.
  * An explicit authToken is used for Coworker runtime calls so a stored user
  * token cannot be selected by accident.
+ * If OAuth refresh throws (network/outage), fall through to a configured API key.
  */
-async function getAuthHeaders({authToken, apiKey} = {}) {
+export async function getAuthHeaders({
+  authToken,
+  apiKey,
+  authManager = getAuthManager(),
+  resolveApiKey = getApiKeyFromEnv,
+} = {}) {
   const explicitToken = typeof authToken === 'string' ? authToken.trim() : '';
   if (explicitToken) {
     return {
@@ -37,8 +43,12 @@ async function getAuthHeaders({authToken, apiKey} = {}) {
     };
   }
 
-  const authManager = getAuthManager();
-  const storedAuthToken = await authManager.getAuthTokenAsync();
+  let storedAuthToken = null;
+  try {
+    storedAuthToken = await authManager.getAuthTokenAsync();
+  } catch {
+    // Refresh can fail transiently; try the configured API key next.
+  }
   if (storedAuthToken) {
     return {
       authorization: `Bearer ${storedAuthToken}`,
@@ -46,7 +56,7 @@ async function getAuthHeaders({authToken, apiKey} = {}) {
     };
   }
 
-  const configuredApiKey = getApiKeyFromEnv();
+  const configuredApiKey = resolveApiKey();
   if (configuredApiKey) {
     return {
       authorization: `Bearer ${configuredApiKey}`,
