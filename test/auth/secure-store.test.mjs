@@ -50,6 +50,23 @@ test('reads and clears credentials without a plaintext file fallback', () => {
   assert.ok(calls.every(({args}) => !args.includes('credentials.json')));
 });
 
+test('redacts credentials from Keychain write failures', () => {
+  const sentinelToken = 'SENTINEL_DO_NOT_LEAK_47';
+  const execFileSync = (_command, args) => {
+    throw new Error(`Command failed: security ${args.join(' ')}`);
+  };
+  const store = createKeychainCredentialStore({platform: 'darwin', execFileSync});
+
+  assert.throws(
+    () => store.write({authToken: sentinelToken}),
+    (error) => {
+      assert.match(error.message, /OS keychain is required to store/);
+      assert.doesNotMatch(error.message, /SENTINEL_DO_NOT_LEAK_47/);
+      return true;
+    },
+  );
+});
+
 test('refuses interactive secret storage on unsupported platforms', () => {
   const store = createKeychainCredentialStore({platform: 'linux', execFileSync: () => ''});
 

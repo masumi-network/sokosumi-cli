@@ -3,6 +3,30 @@ import test from 'node:test';
 
 import {loginWithBrowser} from '../../src/auth/oauth.mjs';
 
+test('rejects browser OAuth before opening a browser outside macOS', async () => {
+  let serverStarted = false;
+  let browserOpened = false;
+
+  await assert.rejects(
+    loginWithBrowser({
+      platform: 'linux',
+      authBaseUrl: 'https://api.example.test/auth',
+      clientId: 'cli-client',
+      serverFactory: () => {
+        serverStarted = true;
+        throw new Error('Loopback server started');
+      },
+      openUrl: async () => {
+        browserOpened = true;
+      },
+    }),
+    /available on macOS only/,
+  );
+
+  assert.equal(serverStarted, false);
+  assert.equal(browserOpened, false);
+});
+
 test('completes browser OAuth through the loopback callback', async () => {
   let tokenRequest;
   const fetchImpl = async (url, options) => {
@@ -25,6 +49,7 @@ test('completes browser OAuth through the loopback callback', async () => {
 
   const credentials = await loginWithBrowser({
     authBaseUrl: 'https://api.example.test/auth',
+    platform: 'darwin',
     clientId: 'cli-client',
     port: 53683,
     openUrl,

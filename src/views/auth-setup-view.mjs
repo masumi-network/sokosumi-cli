@@ -38,7 +38,7 @@ export default function AuthSetupView({onDone, onBack}) {
   );
 
   const optionItems = useMemo(() => ([
-    {label: 'Approve sign-in in browser', value: 'browser-oauth'},
+    {label: 'Approve sign-in in browser (macOS only)', value: 'browser-oauth'},
     {label: 'Paste an API key', value: 'api-key'},
   ]), []);
 
@@ -51,7 +51,9 @@ export default function AuthSetupView({onDone, onBack}) {
   const handleBrowserLogin = async () => {
     setError(null);
     if (!clientId) {
-      setError(`Set SOKOSUMI_OAUTH_CLIENT_ID first. Create a client at ${oauthClientsUrl}.`);
+      setError(
+        `Set SOKOSUMI_OAUTH_CLIENT_ID first. Create a client at ${oauthClientsUrl} with redirect http://127.0.0.1:53682/oauth/callback (enable Sokosumi API + offline access).`,
+      );
       return;
     }
 
@@ -113,7 +115,7 @@ export default function AuthSetupView({onDone, onBack}) {
     null,
     React.createElement(Box, {flexDirection: 'column'},
       React.createElement(AuthStepTitle, null, 'Sign in to Sokosumi CLI'),
-      React.createElement(Text, null, 'Choose browser approval for a user session, or use an API key for headless work.'),
+      React.createElement(Text, null, 'On macOS, browser approval uses the Sokosumi web sign-in / sign-up and consent pages. Or paste an API key for headless work.'),
       step === 'options' && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
         React.createElement(SelectInput, {
           items: optionItems,
@@ -128,14 +130,14 @@ export default function AuthSetupView({onDone, onBack}) {
           }
         }),
         React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
-          React.createElement(Text, {dimColor: true}, 'Browser approval keeps OAuth tokens in the OS keychain.'),
+          React.createElement(Text, {dimColor: true}, 'Browser approval stores OAuth tokens in the macOS Keychain.'),
           React.createElement(Text, {dimColor: true}, 'API keys remain available for headless commands.'),
           onBack && React.createElement(Text, {dimColor: true}, 'Press Esc to go back.')
         )
       ),
       step === 'browser-oauth' && React.createElement(Box, {marginTop: 1, flexDirection: 'column'},
         React.createElement(AuthStepTitle, null, 'Browser Sign-In'),
-        React.createElement(Text, null, busy ? 'Approve access in the browser window.' : 'Select this option again to retry.'),
+        React.createElement(Text, null, busy ? 'Sign in or sign up in the browser, then approve access.' : 'Select this option again to retry.'),
         React.createElement(Text, {dimColor: true}, `OAuth issuer: ${authBaseUrl}`),
         React.createElement(Text, {dimColor: true}, clientId ? `Client: ${clientId}` : `Create a client at: ${oauthClientsUrl}`),
         React.createElement(Text, {dimColor: true}, 'Press Esc to choose another sign-in option.')

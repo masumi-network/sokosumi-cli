@@ -64,17 +64,21 @@ export function createKeychainCredentialStore({
       if (!supported) throw keychainError('store');
       assertCredentials(credentials);
 
-      execFileSync(
-        KEYCHAIN_COMMAND,
-        [
-          'add-generic-password',
-          ...commonArgs,
-          '-w',
-          JSON.stringify(credentials),
-          '-U',
-        ],
-        {stdio: ['ignore', 'ignore', 'pipe']},
-      );
+      try {
+        execFileSync(
+          KEYCHAIN_COMMAND,
+          [
+            'add-generic-password',
+            ...commonArgs,
+            '-w',
+            JSON.stringify(credentials),
+            '-U',
+          ],
+          {stdio: ['ignore', 'ignore', 'pipe']},
+        );
+      } catch {
+        throw keychainError('store');
+      }
     },
 
     clear() {

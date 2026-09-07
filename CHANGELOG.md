@@ -9,7 +9,8 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
-- browser OAuth (PKCE + loopback callback) sign-in for the TUI, with OS-keychain token storage and automatic refresh
+- Homebrew HEAD install via `Formula/sokosumi.rb` (`brew install --HEAD ./Formula/sokosumi.rb`)
+- browser OAuth (PKCE + loopback callback) sign-in for the macOS TUI, reusing Core/Web Better Auth (`/signin` + `/oauth/consent`), with Keychain token storage and automatic refresh
 - first-run authentication chooser: `Approve sign-in in browser` (OAuth) or `Paste an API key`
 - coworker browsing, task creation, task details, and live dashboard flows
 - improved direct job review with files, links, and clearer status handling
@@ -19,8 +20,9 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Changed
 
-- store OAuth access and refresh tokens in the OS keychain (previously `~/.sokosumi/credentials.json`)
-- gate the TUI boot on the resolved auth check, so a pending refresh does not flash sign-in or the menu
+- store OAuth access and refresh tokens in the macOS Keychain (previously `~/.sokosumi/credentials.json`)
+- gate the TUI boot on the resolved auth check, so a pending refresh does not flash sign-in or the dashboard
+- open the live Dashboard after a successful auth check (Esc returns to the main menu)
 - moved interactive CLI config from repo-local `.env` writes to `~/.sokosumi/config.json`
 - changed API auth handling to use `Authorization: Bearer` for both tokens and dedicated API keys
 - renamed the old "Hired Agents" workflow to `My Jobs`
@@ -31,10 +33,12 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Removed
 
-- plaintext `~/.sokosumi/credentials.json` token store (superseded by the OS keychain)
+- plaintext `~/.sokosumi/credentials.json` token store (superseded by the macOS Keychain)
 - the email/magic-link sign-in option (replaced by browser OAuth)
 
 ### Fixed
+
+- prevented macOS Keychain write errors from exposing OAuth credential payloads
 
 - corrected API base URL and route-prefix drift across services
 - fixed task creation so new tasks are created with `status: READY`

@@ -259,6 +259,7 @@ function waitForCallback({server, callbackPath, timeoutMs, signal, port}) {
 
 export async function loginWithBrowser({
   authBaseUrl,
+  platform = process.platform,
   clientId,
   clientSecret,
   scope = DEFAULT_OAUTH_SCOPE,
@@ -270,6 +271,12 @@ export async function loginWithBrowser({
   fetchImpl,
   signal,
 } = {}) {
+  if (platform !== 'darwin') {
+    throw new Error(
+      'Browser sign-in is available on macOS only. Use an API key or auth token on this platform.',
+    );
+  }
+
   const resolvedClientId = requireText(clientId, 'clientId');
   const resolvedPort = Number(port);
   if (!Number.isInteger(resolvedPort) || resolvedPort < 1 || resolvedPort > 65535) {

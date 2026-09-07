@@ -65,7 +65,7 @@ test('boot route waits on an unresolved auth check instead of flashing a screen'
   assert.equal(selectBootRoute({showLogo: false, authResolved: false, hasAuth: true}), 'boot');
 });
 
-test('boot route picks menu or auth only after auth resolves', () => {
-  assert.equal(selectBootRoute({showLogo: false, authResolved: true, hasAuth: true}), 'menu');
+test('boot route picks dashboard or auth only after auth resolves', () => {
+  assert.equal(selectBootRoute({showLogo: false, authResolved: true, hasAuth: true}), 'dashboard');
   assert.equal(selectBootRoute({showLogo: false, authResolved: true, hasAuth: false}), 'auth');
 });

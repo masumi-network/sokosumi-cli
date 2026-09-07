@@ -2,7 +2,7 @@ import {getApiKeyFromEnv} from '../utils/env.mjs';
 import {getAuthManager} from './auth-manager.mjs';
 
 /**
- * Decides whether the TUI can boot straight to the menu.
+ * Decides whether the TUI can boot straight to the dashboard.
  * A stored OAuth session with an expired access token still counts when its
  * refresh token can mint a new one, so a restart does not force a re-login.
  * @param {Object} [options]
@@ -26,15 +26,15 @@ export async function resolveInitialAuth({
 
 /**
  * Chooses the boot route from the three boot flags. Auth is never decided until
- * it resolves, so a pending refresh renders neither sign-in nor the menu.
+ * it resolves, so a pending refresh renders neither sign-in nor the dashboard.
  * @param {Object} state
  * @param {boolean} state.showLogo
  * @param {boolean} state.authResolved
  * @param {boolean} state.hasAuth
- * @returns {'logo'|'boot'|'menu'|'auth'}
+ * @returns {'logo'|'boot'|'dashboard'|'auth'}
  */
 export function selectBootRoute({showLogo, authResolved, hasAuth} = {}) {
   if (showLogo) return 'logo';
   if (!authResolved) return 'boot';
-  return hasAuth ? 'menu' : 'auth';
+  return hasAuth ? 'dashboard' : 'auth';
 }

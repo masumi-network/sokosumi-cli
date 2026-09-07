@@ -25,9 +25,9 @@ import {resolveInitialAuth, selectBootRoute} from './auth/bootstrap.mjs';
 
 const BRAND_HEX = '#7F00FF'; // RGB(127,0,255)
 
-function MainMenu() {
+function MainMenu({initialMode = 'dashboard'} = {}) {
   const {exit} = useApp();
-  const [mode, setMode] = useState('menu'); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire' | 'coworkers' | 'coworker' | 'tasks' | 'task' | 'taskAgents' | 'taskHire' | 'createTask' | 'dashboard' | 'auth'
+  const [mode, setMode] = useState(initialMode); // 'menu' | 'nl' | 'routing' | 'placeholder' | 'account' | 'agents' | 'agent' | 'jobs' | 'hire' | 'coworkers' | 'coworker' | 'tasks' | 'task' | 'taskAgents' | 'taskHire' | 'createTask' | 'dashboard' | 'auth'
   const [nl, setNl] = useState('');
   const [section, setSection] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
@@ -338,7 +338,7 @@ function MainMenu() {
     return React.createElement(AuthSetupView, {
       onDone: () => {
         setUserLoadNonce((value) => value + 1);
-        setMode('menu');
+        setMode('dashboard');
       },
       onBack: () => setMode('menu')
     });
@@ -555,5 +555,5 @@ export default function App() {
     });
   }
 
-  return React.createElement(MainMenu);
+  return React.createElement(MainMenu, {initialMode: 'dashboard'});
 }
