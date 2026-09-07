@@ -7,9 +7,11 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-07
+
 ### Added
 
-- Homebrew HEAD install via `Formula/sokosumi.rb` (`brew install --HEAD ./Formula/sokosumi.rb`)
+- Homebrew install via the `masumi-network/sokosumi` tap (`brew install masumi-network/sokosumi/sokosumi`)
 - browser OAuth (PKCE + loopback callback) sign-in for the macOS TUI, reusing Core/Web Better Auth (`/signin` + `/oauth/consent`), with Keychain token storage and automatic refresh
 - first-run authentication chooser: `Approve sign-in in browser` (OAuth) or `Paste an API key`
 - coworker browsing, task creation, task details, and live dashboard flows
@@ -39,7 +41,7 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ### Fixed
 
 - prevented macOS Keychain write errors from exposing OAuth credential payloads
-
+- fall back to a configured API key when OAuth token refresh throws
 - corrected API base URL and route-prefix drift across services
 - fixed task creation so new tasks are created with `status: READY`
 - aligned job/task payloads and models with the current API contract
