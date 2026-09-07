@@ -6,23 +6,19 @@ The app is built with React and Ink and is intended to be a lightweight way to w
 
 ![Sokosumi CLI Screenshot](./screenshot.png)
 
-## Install (macOS)
+## Install
+
+Anyone can install the CLI globally from npm:
+
+```bash
+npm install -g sokosumi
+sokosumi
+```
+
+On macOS, Homebrew is also available once the formula is in a trusted tap:
 
 ```bash
 brew install masumi-network/sokosumi/sokosumi
-```
-
-That installs the latest stable release from the [`masumi-network/homebrew-sokosumi`](https://github.com/masumi-network/homebrew-sokosumi) tap. After the tap is trusted once, the short form also works:
-
-```bash
-brew tap masumi-network/sokosumi
-brew install sokosumi
-```
-
-For the latest `main` tip instead of a release:
-
-```bash
-brew install --HEAD masumi-network/sokosumi/sokosumi
 ```
 
 Create an OAuth client at [Developer → OAuth clients](https://app.sokosumi.com/developer/oauth-clients) with redirect URI `http://127.0.0.1:53682/oauth/callback`. Enable **Sokosumi API** and **offline access**, then:

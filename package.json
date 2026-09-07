@@ -1,9 +1,20 @@
 {
-  "name": "sokosumi-cli",
+  "name": "sokosumi",
   "version": "2.1.0",
   "description": "CLI for Sokosumi agents, coworkers, and automation workflows",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/masumi-network/sokosumi-cli.git"
+  },
+  "homepage": "https://github.com/masumi-network/sokosumi-cli#readme",
+  "bugs": {
+    "url": "https://github.com/masumi-network/sokosumi-cli/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "bin",
     "src",
