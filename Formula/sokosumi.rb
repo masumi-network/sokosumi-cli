@@ -1,14 +1,8 @@
-# Homebrew formula for the Sokosumi CLI.
-# HEAD-only until the repo has a tagged release; after tagging, add a stable
-# `url` + `sha256` pointing at the release tarball so plain `brew install` works.
-#
-#   brew install --HEAD ./Formula/sokosumi.rb
-#   export SOKOSUMI_OAUTH_CLIENT_ID='...'   # from Developer → OAuth clients
-#   sokosumi
-#
 class Sokosumi < Formula
   desc "Terminal interface for the Sokosumi agent marketplace"
   homepage "https://github.com/masumi-network/sokosumi-cli"
+  url "https://github.com/masumi-network/sokosumi-cli/archive/refs/tags/v2.1.0.tar.gz"
+  sha256 "abadb6ad9cd17eb378bbeaabd430db719bea93413d6e85751a1485313358f265"
   license "MIT"
   head "https://github.com/masumi-network/sokosumi-cli.git", branch: "main"
 

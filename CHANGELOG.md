@@ -11,6 +11,7 @@ and versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
+- public npm package `sokosumi` for global install (`npm install -g sokosumi`)
 - Homebrew install via the `masumi-network/sokosumi` tap (`brew install masumi-network/sokosumi/sokosumi`)
 - browser OAuth (PKCE + loopback callback) sign-in for the macOS TUI, reusing Core/Web Better Auth (`/signin` + `/oauth/consent`), with Keychain token storage and automatic refresh
 - first-run authentication chooser: `Approve sign-in in browser` (OAuth) or `Paste an API key`
