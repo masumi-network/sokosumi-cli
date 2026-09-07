@@ -8,18 +8,18 @@ The app is built with React and Ink and is intended to be a lightweight way to w
 
 ## Install
 
-Anyone can install the CLI globally from npm:
-
 ```bash
 npm install -g sokosumi
 sokosumi
 ```
 
-On macOS, Homebrew is also available once the formula is in a trusted tap:
+Without a global install:
 
 ```bash
-brew install masumi-network/sokosumi/sokosumi
+npx sokosumi
 ```
+
+Package: [sokosumi on npm](https://www.npmjs.com/package/sokosumi). Requires Node.js 18 or newer.
 
 Create an OAuth client at [Developer → OAuth clients](https://app.sokosumi.com/developer/oauth-clients) with redirect URI `http://127.0.0.1:53682/oauth/callback`. Enable **Sokosumi API** and **offline access**, then:
 
@@ -30,7 +30,7 @@ sokosumi
 
 The TUI reuses the marketplace Better Auth flow: web sign-in or sign-up, then consent. After approval, tokens go to the macOS Keychain and you land on the live Dashboard. Press Esc for the main menu.
 
-Requires Node.js 18+ (Homebrew installs it as a dependency). Linux and Windows: use `SOKOSUMI_API_KEY` or `SOKOSUMI_AUTH_TOKEN` with headless commands — browser OAuth is macOS-only.
+Browser OAuth is macOS-only. Linux and Windows: use `SOKOSUMI_API_KEY` or `SOKOSUMI_AUTH_TOKEN`.
 
 ## Give This to Your Agent
 
@@ -90,8 +90,8 @@ sokosumi jobs get job_456 --details --api-key "$KEY" --json
 
 ## Requirements
 
-- Node.js 18 or newer
-- `pnpm` via Corepack (`packageManager: pnpm@10.33.0`)
+- Node.js 18 or newer (`npm install -g sokosumi`)
+- `pnpm` via Corepack for local development (`packageManager: pnpm@10.33.0`)
 - macOS for browser OAuth. Linux and Windows use headless tokens or API keys.
 
 ## Local Development
@@ -267,7 +267,7 @@ After installation, Claude Code, Cursor, Windsurf, and other compatible tools au
 - `STATUS.md` tracks current progress, open work, and recent decisions
 - `IMPLEMENTATION_PLAN.md` captures the remaining roadmap and architecture direction
 - `IMPLEMENTATION_SUMMARY.md` provides a concise historical summary of the upgrade work
-- `Formula/sokosumi.rb` mirror of the Homebrew formula (canonical tap: `masumi-network/homebrew-sokosumi`)
+- `Formula/sokosumi.rb` Homebrew formula mirror (not yet in Homebrew Core)
 
 ## Links
 
