@@ -8,10 +8,21 @@ The app is built with React and Ink and is intended to be a lightweight way to w
 
 ## Install (macOS)
 
-From a clone of this repo:
+```bash
+brew install masumi-network/sokosumi/sokosumi
+```
+
+That installs the latest stable release from the [`masumi-network/homebrew-sokosumi`](https://github.com/masumi-network/homebrew-sokosumi) tap. After the tap is trusted once, the short form also works:
 
 ```bash
-brew install --HEAD ./Formula/sokosumi.rb
+brew tap masumi-network/sokosumi
+brew install sokosumi
+```
+
+For the latest `main` tip instead of a release:
+
+```bash
+brew install --HEAD masumi-network/sokosumi/sokosumi
 ```
 
 Create an OAuth client at [Developer → OAuth clients](https://app.sokosumi.com/developer/oauth-clients) with redirect URI `http://127.0.0.1:53682/oauth/callback`. Enable **Sokosumi API** and **offline access**, then:
@@ -260,7 +271,7 @@ After installation, Claude Code, Cursor, Windsurf, and other compatible tools au
 - `STATUS.md` tracks current progress, open work, and recent decisions
 - `IMPLEMENTATION_PLAN.md` captures the remaining roadmap and architecture direction
 - `IMPLEMENTATION_SUMMARY.md` provides a concise historical summary of the upgrade work
-- `Formula/sokosumi.rb` Homebrew HEAD formula
+- `Formula/sokosumi.rb` mirror of the Homebrew formula (canonical tap: `masumi-network/homebrew-sokosumi`)
 
 ## Links
 
